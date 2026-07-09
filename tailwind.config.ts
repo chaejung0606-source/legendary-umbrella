@@ -37,6 +37,22 @@ const config: Config = {
           800: "#5c6c1d",
           900: "#4d5a1d",
         },
+        // 무광 세라믹 랜딩(/welcome) 전용 팔레트 — 기존 테마와 분리(추가 전용).
+        ceramic: {
+          pageBg: "#F3EDE3",
+          surface: "#FFF9EF",
+          surface2: "#F8F1E7",
+          cream: "#EFE7DA",
+          mint: "#AFCFC1",
+          mintDark: "#8FB9A8",
+          sky: "#B7D8E8",
+          skySoft: "#D4E8EF",
+          sage: "#9FB7A4",
+          pink: "#EEC7C2",
+          ink: "#2F3A37",
+          sub: "#7C817B",
+          line: "rgba(120, 110, 95, 0.12)",
+        },
         // pastel surface palette (used for stat cards, badges, accents)
         // 슬롯 이름은 기존 톤 키를 유지하고, 값만 라임/그린 테마에 맞춰 재조정했다.
         pastel: {
@@ -73,6 +89,11 @@ const config: Config = {
         "soft-lg": "0 24px 60px -20px hsl(84 32% 30% / 0.2), 0 8px 20px -10px hsl(84 30% 32% / 0.12)",
         clay: "8px 8px 24px hsl(80 24% 80% / 0.5), -8px -8px 24px hsl(0 0% 100% / 0.9)",
         pill: "0 6px 18px -8px hsl(72 60% 38% / 0.45)",
+        // 무광 세라믹 뉴모피즘 그림자 (랜딩 전용, 추가)
+        neu: "8px 8px 20px rgba(160, 140, 110, 0.16), -6px -6px 16px rgba(255, 255, 255, 0.75)",
+        "neu-lg": "14px 14px 34px rgba(150, 130, 105, 0.18), -10px -10px 26px rgba(255, 255, 255, 0.82)",
+        "neu-btn": "4px 4px 10px rgba(150, 130, 100, 0.18), -4px -4px 10px rgba(255, 255, 255, 0.8)",
+        "neu-inset": "inset 4px 4px 8px rgba(150, 130, 100, 0.18), inset -4px -4px 8px rgba(255, 255, 255, 0.75)",
       },
       keyframes: {
         "fade-in-up": {
