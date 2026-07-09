@@ -401,6 +401,7 @@ export function deleteBuilding(id: string): { ok: true } | { error: string } {
 export interface AccountInput {
   name: string;
   email: string;
+  password?: string; // 생성 시 필수, 수정 시 입력하면 변경
   role: string;
   permissions: string[];
   active: boolean;
@@ -409,11 +410,13 @@ export interface AccountInput {
 export function createAccount(input: AccountInput): Account | { error: string } {
   if (!input.name.trim()) return { error: "이름을 입력해주세요." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return { error: "올바른 이메일 형식이 아닙니다." };
+  if (!input.password || input.password.length < 4) return { error: "비밀번호는 4자 이상 입력해주세요." };
   if (dataset.accounts.some((a) => a.email.toLowerCase() === input.email.toLowerCase())) return { error: "이미 등록된 이메일입니다." };
   const account: Account = {
     id: `acc-${dataset.accounts.length + 1}-${dataset.accounts.reduce((n, a) => n + a.email.length, 0)}`,
     name: input.name.trim(),
     email: input.email.trim(),
+    password: input.password,
     role: input.role,
     permissions: input.permissions,
     active: input.active,
@@ -432,7 +435,21 @@ export function updateAccount(id: string, input: AccountInput): Account | { erro
   account.role = input.role;
   account.permissions = input.permissions;
   account.active = input.active;
+  if (input.password && input.password.length >= 4) account.password = input.password;
   return account;
+}
+
+// 로그인 검증 — 이메일+비밀번호 일치 & 활성 계정
+export function verifyLogin(email: string, password: string): Account | { error: string } {
+  const account = dataset.accounts.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
+  if (!account || account.password !== password) return { error: "이메일 또는 비밀번호가 올바르지 않습니다." };
+  if (!account.active) return { error: "비활성화된 계정입니다. 관리자에게 문의하세요." };
+  if (account.permissions.length === 0) return { error: "접근 가능한 메뉴가 없습니다. 관리자에게 권한을 요청하세요." };
+  return account;
+}
+
+export function getAccountById(id: string): Account | undefined {
+  return dataset.accounts.find((a) => a.id === id);
 }
 
 export function deleteAccount(id: string): { ok: true } | { error: string } {

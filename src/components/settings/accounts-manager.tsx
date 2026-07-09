@@ -28,13 +28,14 @@ export function AccountsManager({ accounts }: { accounts: Account[] }) {
   const [role, setRole] = useState("asset_manager");
   const [perms, setPerms] = useState<string[]>(ROLE_PRESETS.asset_manager);
   const [active, setActive] = useState(true);
+  const [password, setPassword] = useState("");
 
   function openCreate() {
-    setName(""); setEmail(""); setRole("asset_manager"); setPerms(ROLE_PRESETS.asset_manager); setActive(true);
+    setName(""); setEmail(""); setPassword(""); setRole("asset_manager"); setPerms(ROLE_PRESETS.asset_manager); setActive(true);
     setEditing({ mode: "create" });
   }
   function openEdit(a: Account) {
-    setName(a.name); setEmail(a.email); setRole(a.role); setPerms(a.permissions); setActive(a.active);
+    setName(a.name); setEmail(a.email); setPassword(""); setRole(a.role); setPerms(a.permissions); setActive(a.active);
     setEditing({ mode: "edit", account: a });
   }
   function applyRolePreset(r: string) {
@@ -47,7 +48,7 @@ export function AccountsManager({ accounts }: { accounts: Account[] }) {
 
   function save() {
     if (!editing) return;
-    const input = { name, email, role, permissions: perms, active };
+    const input = { name, email, password: password || undefined, role, permissions: perms, active };
     startTransition(async () => {
       const result = editing.mode === "edit"
         ? await updateAccountAction(editing.account.id, input)
@@ -132,6 +133,20 @@ export function AccountsManager({ accounts }: { accounts: Account[] }) {
               <Field label="이름" required><Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="이름" /></Field>
               <Field label="이메일(로그인)" required><Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="user@sadan.local" /></Field>
             </div>
+            <Field
+              label="비밀번호"
+              required={editing?.mode === "create"}
+              hint={editing?.mode === "edit" ? "변경 시에만 입력" : "4자 이상"}
+            >
+              <Input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                required={editing?.mode === "create"}
+                placeholder={editing?.mode === "edit" ? "비워두면 기존 유지" : "로그인 비밀번호"}
+                autoComplete="new-password"
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="역할" hint="선택 시 권한 프리셋 적용">
                 <NativeSelect value={role} onChange={(e) => applyRolePreset(e.target.value)}>

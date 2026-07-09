@@ -1,6 +1,6 @@
-import { Landing } from "@/components/soft/Landing";
+import { redirect } from "next/navigation";
 
-// /welcome 도 동일한 랜딩을 노출 (구 링크 호환).
+// 구 랜딩 경로 → 로그인으로 통합.
 export default function WelcomePage() {
-  return <Landing />;
+  redirect("/");
 }

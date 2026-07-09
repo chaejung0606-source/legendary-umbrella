@@ -5,8 +5,10 @@ import { Boxes, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/nav";
 
-export function Sidebar({ onNavigate, showClose }: { onNavigate?: () => void; showClose?: boolean }) {
+export function Sidebar({ onNavigate, showClose, allowedHrefs }: { onNavigate?: () => void; showClose?: boolean; allowedHrefs?: string[] }) {
   const pathname = usePathname();
+  // 아이콘 컴포넌트는 서버→클라이언트로 전달할 수 없으므로, 허용 href 목록만 받아 여기서 필터.
+  const navItems = allowedHrefs ? NAV_ITEMS.filter((i) => allowedHrefs.includes(i.href)) : NAV_ITEMS;
 
   return (
     <div className="relative grain flex h-full w-[264px] flex-col border-r border-border bg-card text-foreground">
@@ -30,7 +32,7 @@ export function Sidebar({ onNavigate, showClose }: { onNavigate?: () => void; sh
 
       {/* 메뉴 */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pastel-scroll">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (

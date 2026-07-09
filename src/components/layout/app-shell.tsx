@@ -5,14 +5,24 @@ import { Sidebar } from "./sidebar";
 import { TopHeader, type HeaderNotification } from "./top-header";
 
 // 전체 레이아웃: 좌측 고정 사이드바(데스크톱) + 모바일 드로어 + 상단 헤더 + 본문.
-export function AppShell({ children, notifications = [] }: { children: React.ReactNode; notifications?: HeaderNotification[] }) {
+export function AppShell({
+  children,
+  notifications = [],
+  allowedHrefs,
+  user,
+}: {
+  children: React.ReactNode;
+  notifications?: HeaderNotification[];
+  allowedHrefs?: string[];
+  user?: { name: string; email: string };
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen">
       {/* desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen shrink-0 lg:block">
-        <Sidebar />
+        <Sidebar allowedHrefs={allowedHrefs} />
       </aside>
 
       {/* mobile drawer */}
@@ -22,13 +32,13 @@ export function AppShell({ children, notifications = [] }: { children: React.Rea
           onClick={() => setMobileOpen(false)}
         />
         <div className={cn("absolute left-0 top-0 h-full transition-transform duration-300", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
-          <Sidebar showClose onNavigate={() => setMobileOpen(false)} />
+          <Sidebar allowedHrefs={allowedHrefs} showClose onNavigate={() => setMobileOpen(false)} />
         </div>
       </div>
 
       {/* main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopHeader onMenu={() => setMobileOpen(true)} notifications={notifications} />
+        <TopHeader onMenu={() => setMobileOpen(true)} notifications={notifications} user={user} />
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto w-full max-w-[1280px] animate-fade-in-up">{children}</div>
         </main>

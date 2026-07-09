@@ -34,9 +34,9 @@ function seedBuildings(): Building[] {
 }
 function seedAccounts(): Account[] {
   return [
-    { id: "acc-1", name: "시스템 관리자", email: "admin@sadan.local", role: "admin", permissions: ROLE_PRESETS.admin, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
-    { id: "acc-2", name: "자산관리 담당자", email: "manager@sadan.local", role: "asset_manager", permissions: ROLE_PRESETS.asset_manager, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
-    { id: "acc-3", name: "감사 조회자", email: "auditor@sadan.local", role: "auditor", permissions: ROLE_PRESETS.auditor, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
+    { id: "acc-1", name: "시스템 관리자", email: "admin@sadan.local", password: "admin1234", role: "admin", permissions: ROLE_PRESETS.admin, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
+    { id: "acc-2", name: "자산관리 담당자", email: "manager@sadan.local", password: "manager1234", role: "asset_manager", permissions: ROLE_PRESETS.asset_manager, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
+    { id: "acc-3", name: "감사 조회자", email: "auditor@sadan.local", password: "auditor1234", role: "auditor", permissions: ROLE_PRESETS.auditor, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
   ];
 }
 

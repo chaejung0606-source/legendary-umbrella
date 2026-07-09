@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, Search, Bell, BellOff, ChevronRight } from "lucide-react";
+import { Menu, Search, Bell, BellOff, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logoutAction } from "@/app/auth-actions";
 
 export interface HeaderNotification {
   id: string;
@@ -19,11 +20,30 @@ const TONE_DOT: Record<HeaderNotification["tone"], string> = {
   error: "bg-pastel-coralInk",
 };
 
-export function TopHeader({ onMenu, notifications = [] }: { onMenu?: () => void; notifications?: HeaderNotification[] }) {
+export function TopHeader({
+  onMenu,
+  notifications = [],
+  user,
+}: {
+  onMenu?: () => void;
+  notifications?: HeaderNotification[];
+  user?: { name: string; email: string };
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [loggingOut, startLogout] = useTransition();
   const panelRef = useRef<HTMLDivElement>(null);
+
+  function logout() {
+    startLogout(async () => {
+      await logoutAction();
+      router.replace("/");
+      router.refresh();
+    });
+  }
+
+  const initial = user?.name?.trim()?.[0] ?? "담";
 
   // 알림 패널 바깥 클릭 시 닫기
   useEffect(() => {
@@ -106,14 +126,25 @@ export function TopHeader({ onMenu, notifications = [] }: { onMenu?: () => void;
           )}
         </div>
 
-        {/* 프로필 → 설정으로 이동 */}
-        <Link href="/settings" className="flex items-center gap-2.5 rounded-2xl bg-card px-2.5 py-1.5 shadow-soft ring-1 ring-black/[0.03] transition hover:bg-accent">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-pastel-lavender text-sm font-bold text-pastel-lavenderInk">담</span>
+        {/* 프로필 */}
+        <div className="flex items-center gap-2.5 rounded-2xl bg-card px-2.5 py-1.5 shadow-soft ring-1 ring-black/[0.03]">
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-pastel-lavender text-sm font-bold text-pastel-lavenderInk">{initial}</span>
           <div className="hidden leading-tight sm:block">
-            <div className="text-sm font-semibold">자산관리 담당자</div>
-            <div className="text-[11px] text-muted-foreground">manager@sadan.local</div>
+            <div className="text-sm font-semibold">{user?.name ?? "사용자"}</div>
+            <div className="text-[11px] text-muted-foreground">{user?.email ?? ""}</div>
           </div>
-        </Link>
+        </div>
+
+        {/* 로그아웃 */}
+        <button
+          onClick={logout}
+          disabled={loggingOut}
+          className="grid h-11 w-11 place-items-center rounded-2xl bg-card shadow-soft ring-1 ring-black/[0.03] transition hover:bg-accent disabled:opacity-60"
+          aria-label="로그아웃"
+          title="로그아웃"
+        >
+          {loggingOut ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <LogOut className="h-5 w-5 text-muted-foreground" />}
+        </button>
       </div>
     </header>
   );
