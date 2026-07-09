@@ -10,6 +10,8 @@ import { tagStatusTone, toneClasses } from "@/lib/status";
 import { TAG_STATUSES } from "@/types";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = "force-dynamic";
+
 export default function RfidPage() {
   const assets = dataset.assets.filter((a) => !a.deletedAt);
   const registered = assets.filter((a) => a.schoolRfidNo).length;

@@ -1,10 +1,12 @@
-import { FlaskConical, Boxes, PackageMinus, AlertTriangle, Wallet, Download, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal } from "lucide-react";
+import { FlaskConical, Boxes, PackageMinus, AlertTriangle, Wallet } from "lucide-react";
 import { getConsumables, getConsumableStats } from "@/data";
 import { formatNumber, formatCurrencyShort } from "@/lib/format";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/cards/stat-card";
-import { Button } from "@/components/ui/button";
 import { ConsumableTable } from "@/components/consumables/consumable-table";
+import { ConsumableActions } from "@/components/consumables/consumable-actions";
+
+export const dynamic = "force-dynamic";
 
 export default function ConsumablesPage() {
   const items = getConsumables();
@@ -17,12 +19,7 @@ export default function ConsumablesPage() {
         description="자산 원장과 분리해 수량 기반 재고로 관리합니다."
         icon={<FlaskConical className="h-6 w-6" />}
         actions={
-          <>
-            <Button variant="soft" size="sm"><ArrowDownToLine className="h-4 w-4" /> 입고</Button>
-            <Button variant="soft" size="sm"><ArrowUpFromLine className="h-4 w-4" /> 출고</Button>
-            <Button variant="soft" size="sm"><SlidersHorizontal className="h-4 w-4" /> 재고 조정</Button>
-            <Button variant="outline" size="sm"><Download className="h-4 w-4" /> 엑셀</Button>
-          </>
+          <ConsumableActions items={items.map((i) => ({ id: i.id, itemName: i.itemName, currentQty: i.currentQty, unit: i.unit }))} />
         }
       />
 

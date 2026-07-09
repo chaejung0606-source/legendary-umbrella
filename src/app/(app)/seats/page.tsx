@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/cards/stat-card";
 import { SeatGrid } from "@/components/seats/seat-grid";
 
+export const dynamic = "force-dynamic";
+
 export default function SeatsPage() {
   const seats = getSeats();
   const assigned = seats.filter((s) => s.occupantName).length;

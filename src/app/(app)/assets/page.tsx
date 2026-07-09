@@ -18,6 +18,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
   });
   const qs = (p: number) =>
     new URLSearchParams({ ...Object.fromEntries(Object.entries(sp).filter(([, v]) => v) as [string, string][]), page: String(p) }).toString();
+  const exportQs = new URLSearchParams(Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page") as [string, string][])).toString();
 
   return (
     <div className="space-y-5">
@@ -27,7 +28,9 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
         icon={<Boxes className="h-6 w-6" />}
         actions={
           <>
-            <Button variant="outline" size="default"><Download className="h-4 w-4" /> 엑셀 다운로드</Button>
+            <Button asChild variant="outline" size="default">
+              <a href={`/api/export/assets${exportQs ? `?${exportQs}` : ""}`} download><Download className="h-4 w-4" /> 엑셀 다운로드</a>
+            </Button>
             <Button asChild><Link href="/assets/new"><PlusCircle className="h-4 w-4" /> 신규 자산 등록</Link></Button>
           </>
         }

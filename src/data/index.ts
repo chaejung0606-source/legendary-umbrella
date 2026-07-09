@@ -1,11 +1,15 @@
 import type {
   Asset, DashboardStats, MonthlyAcquisitionPoint, CategoryRatioPoint, LaptopLoan, ConsumableItem, Seat,
 } from "@/types";
-import { generateDataset } from "./generate";
+import { generateDataset, type Dataset } from "./generate";
 import { TODAY } from "./pools";
 
 // 생성된 데이터셋(싱글턴). 추후 이 모듈만 Prisma 쿼리로 교체하면 화면은 그대로 동작한다.
-const DATASET = generateDataset();
+// globalThis 에 보관해 서버 액션/페이지 렌더가 같은 인스턴스를 공유하고,
+// 개발 모드 HMR 이후에도 변경 내용(등록/대여/입출고 등)이 유지되도록 한다.
+// 단, 서버 프로세스가 재시작되면 초기 더미 데이터로 되돌아간다 (DB 미연동 MVP).
+const globalStore = globalThis as unknown as { __sadanDataset?: Dataset };
+const DATASET = (globalStore.__sadanDataset ??= generateDataset());
 
 export const dataset = DATASET;
 

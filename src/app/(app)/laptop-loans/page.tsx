@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/cards/stat-card";
 import { LaptopLoanTable } from "@/components/laptops/laptop-loan-table";
 
+export const dynamic = "force-dynamic";
+
 export default function LaptopLoansPage() {
   const loans = getLaptopLoans();
   const stats = getLaptopStats();

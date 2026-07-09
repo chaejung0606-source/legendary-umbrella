@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
-import { TopHeader } from "./top-header";
+import { TopHeader, type HeaderNotification } from "./top-header";
 
 // 전체 레이아웃: 좌측 고정 사이드바(데스크톱) + 모바일 드로어 + 상단 헤더 + 본문.
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, notifications = [] }: { children: React.ReactNode; notifications?: HeaderNotification[] }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopHeader onMenu={() => setMobileOpen(true)} />
+        <TopHeader onMenu={() => setMobileOpen(true)} notifications={notifications} />
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto w-full max-w-[1280px] animate-fade-in-up">{children}</div>
         </main>

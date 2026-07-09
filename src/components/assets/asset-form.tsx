@@ -1,16 +1,18 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Sparkles, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field, FormSection, NativeSelect } from "@/components/ui/form-controls";
-import { generateManagementNumber } from "@/lib/management-number";
 import { toYyyyMmDd } from "@/lib/format";
 import { TAG_STATUSES } from "@/types";
-import type { Asset } from "@/types";
+import type { Asset, TagStatus } from "@/types";
 import type { AssetMajorCategory, Building } from "@/types";
+import { useToast } from "@/components/ui/toaster";
+import { createAssetAction, updateAssetAction } from "@/app/actions";
 
 export function AssetForm({
   mode,
@@ -23,12 +25,15 @@ export function AssetForm({
   buildings: Building[];
   defaults?: Partial<Asset>;
 }) {
+  const router = useRouter();
+  const { toast } = useToast();
   const [major, setMajor] = useState(defaults?.majorCategory ?? "");
   const [middle, setMiddle] = useState(defaults?.middleCategory ?? "");
   const [building, setBuilding] = useState(defaults?.buildingCode ?? "");
   const [acquiredDate, setAcquiredDate] = useState(defaults?.acquiredDate ?? "");
   const [seq, setSeq] = useState(String(defaults?.sequenceNo ?? 1));
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ id: string; managementNo: string } | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const middles = useMemo(() => categories.find((c) => c.name === major)?.middles ?? [], [categories, major]);
   const classificationCode = useMemo(
@@ -45,12 +50,39 @@ export function AssetForm({
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // MVP 시안: 실제 저장 대신 생성된 관리번호를 확인 화면으로 표시.
-    const computed =
-      mode === "edit"
-        ? generateManagementNumber({ serialNo: defaults?.legacyRowNo ?? 1, acquiredAt: acquiredDate, classificationCode: Number(classificationCode), itemNo: Number(seq), buildingCode: building })
-        : preview;
-    setSaved(computed ?? "(관리번호 생성 불가 — 필수값 확인)");
+    const fd = new FormData(e.currentTarget);
+    const str = (name: string) => String(fd.get(name) ?? "").trim() || null;
+    const input = {
+      expenditureDocument: str("expenditureDocument"),
+      managingOrganization: str("managingOrganization"),
+      itemName: str("itemName") ?? "",
+      specification: str("specification"),
+      majorCategory: major,
+      middleCategory: middle,
+      classificationCode: classificationCode ? Number(classificationCode) : null,
+      acquiredDate: acquiredDate || null,
+      unitPrice: Number(fd.get("unitPrice") ?? 0) || 0,
+      sequenceNo: seq ? Number(seq) : null,
+      buildingCode: building || null,
+      place: str("place"),
+      roomName: str("roomName"),
+      usageRaw: str("usage"),
+      schoolRfidNo: str("schoolRfidNo"),
+      tagStatus: (str("tagStatus") ?? "미지정") as TagStatus | "미지정",
+      memo: str("memo"),
+    };
+    startTransition(async () => {
+      const result =
+        mode === "edit" && defaults?.id
+          ? await updateAssetAction(defaults.id, input)
+          : await createAssetAction(input);
+      if (result.ok) {
+        setSaved({ id: result.id, managementNo: result.managementNo ?? "(관리번호 미생성 — 필수값 미입력)" });
+        router.refresh();
+      } else {
+        toast({ kind: "error", title: "저장 실패", description: result.error });
+      }
+    });
   }
 
   if (saved) {
@@ -60,11 +92,14 @@ export function AssetForm({
           <CheckCircle2 className="h-7 w-7" />
         </div>
         <h3 className="text-lg font-bold">{mode === "edit" ? "수정 완료" : "자산 등록 완료"}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">MVP 시안에서는 화면 동작만 시연합니다.</p>
-        <p className="mt-3 inline-block rounded-2xl bg-muted px-4 py-2 font-mono text-sm">{saved}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          데모 데이터에 반영되어 자산 원장·대시보드에서 바로 확인할 수 있습니다. (DB 미연동 — 서버 재시작 시 초기화)
+        </p>
+        <p className="mt-3 inline-block rounded-2xl bg-muted px-4 py-2 font-mono text-sm">{saved.managementNo}</p>
         <div className="mt-6 flex justify-center gap-2">
-          <Button asChild><Link href="/assets">자산 목록으로</Link></Button>
-          <Button variant="outline" onClick={() => setSaved(null)}>계속 입력</Button>
+          <Button asChild><Link href={`/assets/${saved.id}`}>자산 상세 보기</Link></Button>
+          <Button asChild variant="outline"><Link href="/assets">자산 목록으로</Link></Button>
+          {mode === "create" && <Button variant="ghost" onClick={() => setSaved(null)}>계속 입력</Button>}
         </div>
       </div>
     );
@@ -143,7 +178,10 @@ export function AssetForm({
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" size="lg">{mode === "edit" ? "변경 저장" : "자산 등록"}</Button>
+        <Button type="submit" size="lg" disabled={pending}>
+          {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+          {mode === "edit" ? "변경 저장" : "자산 등록"}
+        </Button>
         <Button asChild type="button" variant="secondary" size="lg"><Link href="/assets">취소</Link></Button>
       </div>
     </form>

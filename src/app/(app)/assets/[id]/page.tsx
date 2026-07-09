@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, AlertTriangle, Info, Coins, MapPin, ScanLine, Pencil, ArrowLeftRight, Laptop, History } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Info, Coins, MapPin, ScanLine, History } from "lucide-react";
 import { getAssetById, isMismatch, getLaptopLoans } from "@/data";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { AssetActions } from "@/components/assets/asset-actions";
 import { AssetDetailCard } from "@/components/assets/asset-detail-card";
 import { AssetStatusBadge, UsageBadge, TagStatusBadge, RfidStatusBadge } from "@/components/badges/status-badge";
 import { StatusBadge } from "@/components/badges/status-badge";
@@ -38,11 +39,11 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <p className="mt-1 text-sm text-muted-foreground">{asset.specification}</p>
             <p className="mt-2 font-mono text-sm font-medium text-foreground/80">{asset.lockedManagementNo}</p>
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button asChild><Link href={`/assets/${asset.id}/edit`}><Pencil className="h-4 w-4" /> 수정</Link></Button>
-            <Button variant="outline"><ArrowLeftRight className="h-4 w-4" /> 이동 처리</Button>
-            {isNotebook && <Button variant="secondary"><Laptop className="h-4 w-4" /> 대여 처리</Button>}
-          </div>
+          <AssetActions
+            assetId={asset.id}
+            itemName={asset.itemName}
+            loan={loan ? { id: loan.id, status: loan.status } : null}
+          />
         </div>
 
         {isMismatch(asset) && (

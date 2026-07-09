@@ -8,6 +8,8 @@ import { MonthlyAssetChart } from "@/components/charts/monthly-asset-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = "force-dynamic";
+
 export default function ReportsPage() {
   const monthly = getMonthlyAcquisition();
   const categories = getCategoryRatio();
@@ -20,7 +22,11 @@ export default function ReportsPage() {
         title="통계 / 리포트"
         description="자산 취득·구성 통계를 확인하고 리포트를 내보냅니다."
         icon={<BarChart3 className="h-6 w-6" />}
-        actions={<Button variant="outline" size="sm"><Download className="h-4 w-4" /> 리포트 내보내기</Button>}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <a href="/api/export/report" download><Download className="h-4 w-4" /> 리포트 내보내기</a>
+          </Button>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-5">

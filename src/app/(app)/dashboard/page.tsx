@@ -12,6 +12,8 @@ import { AssetStatusBadge, LoanStatusBadge } from "@/components/badges/status-ba
 import { MonthlyAssetChart } from "@/components/charts/monthly-asset-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 
+export const dynamic = "force-dynamic";
+
 export default function DashboardPage() {
   const stats = getDashboardStats();
   const monthly = getMonthlyAcquisition();
