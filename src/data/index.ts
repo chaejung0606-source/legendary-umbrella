@@ -83,9 +83,10 @@ export function getMonthlyAcquisition(monthsBack = 12): MonthlyAcquisitionPoint[
   return points;
 }
 
+// 도넛 차트용 — 라임/올리브 그린 단일 계열의 명도 차이로 구분한다.
 const CATEGORY_COLORS: Record<string, string> = {
-  가구: "#a48cf2", 사무용장비: "#f0a0c4", 전산장비: "#6fb1e0", 가전제품: "#7fd1a8",
-  방송장비: "#f6c45f", 기타자산: "#c4a6ef", 소프트웨어: "#f0936b",
+  가구: "#c8e253", 사무용장비: "#9dbf34", 전산장비: "#74891d", 가전제품: "#d9efa0",
+  방송장비: "#55631d", 기타자산: "#ecf7c8", 소프트웨어: "#87a852",
 };
 export function getCategoryRatio(): CategoryRatioPoint[] {
   const assets = liveAssets();

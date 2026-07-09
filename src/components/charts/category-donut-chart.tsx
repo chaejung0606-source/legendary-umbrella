@@ -14,7 +14,7 @@ export function CategoryDonutChart({ data }: { data: CategoryRatioPoint[] }) {
               {data.map((d, i) => <Cell key={i} fill={d.color} />)}
             </Pie>
             <Tooltip
-              contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 8px 30px -12px rgba(124,99,230,0.35)", fontSize: 12 }}
+              contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 8px 30px -12px rgba(93,113,32,0.35)", fontSize: 12 }}
               formatter={(value: number, _n, p) => [`${formatNumber(value)}건 · ${formatCurrency((p?.payload as CategoryRatioPoint)?.amount)}`, (p?.payload as CategoryRatioPoint)?.name]}
             />
           </PieChart>

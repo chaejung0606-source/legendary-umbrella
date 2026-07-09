@@ -4,38 +4,38 @@
 
 /*
  * 사업단 자산관리 플랫폼 — 디자인 시스템
- * 부드러운 파스텔 / 라벤더·퍼플 중심 / claymorphism soft shadow.
- * 업무용 가독성을 위해 본문 텍스트는 충분히 진한 plum-slate 를 사용한다.
+ * 라임 그린 악센트 + 화이트 서페이스 + 뉴트럴 그린 배경 (Lodgify 대시보드 스타일).
+ * 업무용 가독성을 위해 본문 텍스트는 충분히 진한 그린-차콜을 사용한다.
  */
 @layer base {
   :root {
-    /* semantic (shadcn) tokens — mapped to the pastel theme */
-    --background: 252 52% 98.5%;
-    --foreground: 252 28% 24%;
+    /* semantic (shadcn) tokens — mapped to the lime-green theme */
+    --background: 80 24% 97%;
+    --foreground: 84 14% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 252 28% 24%;
+    --card-foreground: 84 14% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 252 28% 24%;
+    --popover-foreground: 84 14% 14%;
 
-    --primary: 252 66% 64%; /* lavender purple */
-    --primary-foreground: 0 0% 100%;
+    --primary: 71 71% 61%; /* lime green — 밝은 배경이라 전경은 진한 올리브 */
+    --primary-foreground: 76 50% 14%;
 
-    --secondary: 324 70% 95%; /* soft pink */
-    --secondary-foreground: 324 42% 38%;
+    --secondary: 78 55% 93%; /* soft lime */
+    --secondary-foreground: 78 42% 26%;
 
-    --muted: 252 40% 96%;
-    --muted-foreground: 252 12% 52%;
+    --muted: 80 22% 95%;
+    --muted-foreground: 80 7% 44%;
 
-    --accent: 252 60% 95.5%;
-    --accent-foreground: 252 46% 44%;
+    --accent: 74 60% 93%;
+    --accent-foreground: 76 45% 28%;
 
-    --destructive: 352 78% 66%; /* coral */
+    --destructive: 0 72% 62%; /* soft red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 252 34% 92%;
-    --input: 252 34% 90%;
-    --ring: 252 66% 64%;
+    --border: 80 16% 90%;
+    --input: 80 16% 88%;
+    --ring: 71 71% 48%;
 
     --radius: 1rem;
   }
@@ -48,8 +48,8 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(1200px 600px at 100% -10%, hsl(252 80% 95% / 0.7), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, hsl(324 80% 95% / 0.55), transparent 55%);
+      radial-gradient(1200px 600px at 100% -10%, hsl(74 70% 92% / 0.7), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, hsl(90 45% 93% / 0.55), transparent 55%);
     background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
@@ -62,14 +62,14 @@
     @apply rounded-3xl bg-card shadow-soft;
   }
   .clay-inset {
-    box-shadow: inset 2px 2px 6px hsl(252 40% 90% / 0.6), inset -2px -2px 6px hsl(0 0% 100% / 0.9);
+    box-shadow: inset 2px 2px 6px hsl(80 25% 88% / 0.6), inset -2px -2px 6px hsl(0 0% 100% / 0.9);
   }
   .pastel-scroll::-webkit-scrollbar {
     height: 10px;
     width: 10px;
   }
   .pastel-scroll::-webkit-scrollbar-thumb {
-    background: hsl(252 40% 88%);
+    background: hsl(80 20% 86%);
     border-radius: 9999px;
   }
   .pastel-scroll::-webkit-scrollbar-track {
