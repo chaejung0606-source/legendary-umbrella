@@ -9,7 +9,7 @@ export function Sidebar({ onNavigate, showClose }: { onNavigate?: () => void; sh
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-[264px] flex-col border-r border-border bg-card text-foreground">
+    <div className="relative grain flex h-full w-[264px] flex-col border-r border-border bg-card text-foreground">
       {/* 로고 */}
       <div className="flex items-center justify-between px-5 h-[72px] shrink-0">
         <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-2.5">

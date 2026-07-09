@@ -12,7 +12,7 @@ export function SoftCard({
   return (
     <div
       className={cn(
-        "rounded-card bg-card shadow-soft ring-1 ring-black/[0.03] transition-all duration-300",
+        "relative grain rounded-card bg-card shadow-soft ring-1 ring-black/[0.03] transition-all duration-300",
         hover && "hover:-translate-y-0.5 hover:shadow-soft-lg",
         padded && "p-6",
         className

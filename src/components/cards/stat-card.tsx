@@ -20,7 +20,7 @@ export function StatCard({
   trend?: { value: string; up?: boolean };
 }) {
   return (
-    <div className={cn("rounded-3xl p-5 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft-lg", toneClasses[tone])}>
+    <div className={cn("relative grain rounded-3xl p-5 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft-lg", toneClasses[tone])}>
       <div className="flex items-start justify-between">
         <span className="text-sm font-medium opacity-80">{label}</span>
         {Icon && (

@@ -10,15 +10,15 @@ export function MonthlyAssetChart({ data }: { data: MonthlyAcquisitionPoint[] })
       <BarChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
         <defs>
           <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#b6d332" />
-            <stop offset="100%" stopColor="#e5f2a6" />
+            <stop offset="0%" stopColor="#8FB9A8" />
+            <stop offset="100%" stopColor="#CDE4D8" />
           </linearGradient>
         </defs>
-        <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#8b937c" }} />
-        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#8b937c" }} width={36} allowDecimals={false} />
+        <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#9a938a" }} />
+        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#9a938a" }} width={36} allowDecimals={false} />
         <Tooltip
-          cursor={{ fill: "rgba(182,211,50,0.10)" }}
-          contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 8px 30px -12px rgba(93,113,32,0.35)", fontSize: 12 }}
+          cursor={{ fill: "rgba(143,185,168,0.14)" }}
+          contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 8px 30px -12px rgba(120,150,135,0.4)", fontSize: 12 }}
           formatter={(value: number, name) => (name === "count" ? [`${value}건`, "등록 건수"] : [formatCurrency(value), "취득금액"])}
         />
         <Bar dataKey="count" radius={[8, 8, 8, 8]} maxBarSize={34}>

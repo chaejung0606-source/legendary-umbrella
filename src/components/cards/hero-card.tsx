@@ -17,12 +17,12 @@ export function HeroCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-card p-7 text-brand-900 shadow-soft-lg",
+        "grain relative overflow-hidden rounded-card p-7 text-brand-900 shadow-soft-lg",
         className
       )}
       style={{
         backgroundImage:
-          "linear-gradient(120deg, hsl(74 78% 88%) 0%, hsl(72 72% 72%) 55%, hsl(70 66% 62%) 100%)",
+          "radial-gradient(circle at 26% 16%, rgba(255,255,255,0.5), transparent 34%), linear-gradient(120deg, hsl(150 32% 82%) 0%, hsl(155 27% 72%) 55%, hsl(160 24% 64%) 100%)",
       }}
     >
       {/* 장식 요소 */}

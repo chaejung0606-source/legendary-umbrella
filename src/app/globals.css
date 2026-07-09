@@ -4,38 +4,39 @@
 
 /*
  * 사업단 자산관리 플랫폼 — 디자인 시스템
- * 라임 그린 악센트 + 화이트 서페이스 + 뉴트럴 그린 배경 (Lodgify 대시보드 스타일).
- * 업무용 가독성을 위해 본문 텍스트는 충분히 진한 그린-차콜을 사용한다.
+ * 무광 세라믹 / 비스크 도자기: 아이보리·베이지 서페이스 + 민트·세이지 악센트.
+ * 광택·유리·금속 배제, diffuse 뉴모피즘 그림자 + 은은한 grain.
+ * 본문 텍스트는 가독성을 위해 진한 그린-차콜(ceramic ink)을 사용한다.
  */
 @layer base {
   :root {
-    /* semantic (shadcn) tokens — mapped to the lime-green theme */
-    --background: 80 24% 97%;
-    --foreground: 84 14% 14%;
+    /* semantic (shadcn) tokens — mapped to the matte ceramic theme */
+    --background: 39 33% 92%; /* #F3EDE3 ceramic pageBg */
+    --foreground: 162 12% 20%; /* ceramic ink */
 
-    --card: 0 0% 100%;
-    --card-foreground: 84 14% 14%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 84 14% 14%;
+    --card: 40 56% 97%; /* #FFF9EF ivory surface */
+    --card-foreground: 162 12% 20%;
+    --popover: 40 56% 97%;
+    --popover-foreground: 162 12% 20%;
 
-    --primary: 71 71% 61%; /* lime green — 밝은 배경이라 전경은 진한 올리브 */
-    --primary-foreground: 76 50% 14%;
+    --primary: 152 24% 60%; /* mint — 밝은 표면이라 전경은 진한 세이지 잉크 */
+    --primary-foreground: 156 26% 16%;
 
-    --secondary: 78 55% 93%; /* soft lime */
-    --secondary-foreground: 78 42% 26%;
+    --secondary: 40 34% 90%; /* warm cream */
+    --secondary-foreground: 150 14% 30%;
 
-    --muted: 80 22% 95%;
-    --muted-foreground: 80 7% 44%;
+    --muted: 40 30% 91%;
+    --muted-foreground: 110 5% 44%;
 
-    --accent: 74 60% 93%;
-    --accent-foreground: 76 45% 28%;
+    --accent: 150 26% 90%; /* soft mint tint */
+    --accent-foreground: 154 20% 30%;
 
-    --destructive: 0 72% 62%; /* soft red */
+    --destructive: 6 58% 66%; /* soft terracotta */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 80 16% 90%;
-    --input: 80 16% 88%;
-    --ring: 71 71% 48%;
+    --border: 40 20% 85%;
+    --input: 40 22% 85%;
+    --ring: 152 28% 54%;
 
     --radius: 1rem;
   }
@@ -48,8 +49,9 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(1200px 600px at 100% -10%, hsl(74 70% 92% / 0.7), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, hsl(90 45% 93% / 0.55), transparent 55%);
+      radial-gradient(1200px 640px at 100% -10%, hsl(200 45% 86% / 0.35), transparent 58%),
+      radial-gradient(1000px 560px at -10% 108%, hsl(150 26% 82% / 0.4), transparent 55%),
+      linear-gradient(160deg, hsl(40 40% 94%), hsl(38 30% 90%));
     background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
@@ -62,14 +64,14 @@
     @apply rounded-3xl bg-card shadow-soft;
   }
   .clay-inset {
-    box-shadow: inset 2px 2px 6px hsl(80 25% 88% / 0.6), inset -2px -2px 6px hsl(0 0% 100% / 0.9);
+    box-shadow: inset 2px 2px 6px hsl(39 24% 84% / 0.7), inset -2px -2px 6px hsl(0 0% 100% / 0.9);
   }
   .pastel-scroll::-webkit-scrollbar {
     height: 10px;
     width: 10px;
   }
   .pastel-scroll::-webkit-scrollbar-thumb {
-    background: hsl(80 20% 86%);
+    background: hsl(39 20% 82%);
     border-radius: 9999px;
   }
   .pastel-scroll::-webkit-scrollbar-track {
