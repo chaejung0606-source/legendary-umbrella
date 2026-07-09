@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
-import { getAssetById } from "@/data";
+import { getAssetById, getCategories, getBuildings } from "@/data";
 import { PageHeader } from "@/components/layout/page-header";
 import { AssetForm } from "@/components/assets/asset-form";
-import { MAJOR_CATEGORIES, BUILDINGS } from "@/data/categories";
+
+export const dynamic = "force-dynamic";
 
 export default async function EditAssetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,7 +18,7 @@ export default async function EditAssetPage({ params }: { params: Promise<{ id: 
         description={`${asset.itemName} · ${asset.lockedManagementNo}`}
         icon={<Pencil className="h-6 w-6" />}
       />
-      <AssetForm mode="edit" categories={MAJOR_CATEGORIES} buildings={BUILDINGS} defaults={asset} />
+      <AssetForm mode="edit" categories={getCategories()} buildings={getBuildings()} defaults={asset} />
     </div>
   );
 }

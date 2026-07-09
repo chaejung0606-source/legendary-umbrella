@@ -1,8 +1,11 @@
 import type {
   Asset, LaptopLoan, ConsumableItem, Seat, SeatAsset, ImportJob, ImportError, AuditLog, LoanStatus,
+  Account, AssetMajorCategory, Building,
 } from "@/types";
 import { Rng, shuffle } from "@/lib/rng";
 import { generateManagementNumber } from "@/lib/management-number";
+import { MAJOR_CATEGORIES, BUILDINGS } from "./categories";
+import { ROLE_PRESETS } from "@/lib/menus";
 import {
   GEN_SEED, TODAY, MAJOR_PLAN, ITEM_TEMPLATES, NOTEBOOK_TEMPLATE, NOTEBOOK_COUNT, RFID_REGISTERED,
   MISMATCH_COUNT, PEOPLE, PLACES, USAGE_WEIGHTS, STATUS_WEIGHTS, TAG_WEIGHTS, SEAT_CODES, CONSUMABLE_TEMPLATES,
@@ -16,6 +19,25 @@ export interface Dataset {
   seats: Seat[];
   importJob: ImportJob;
   auditLogs: AuditLog[];
+  // 편집 가능한 기준정보 (관리번호 생성의 로우데이터) + 계정
+  categories: AssetMajorCategory[];
+  buildings: Building[];
+  accounts: Account[];
+}
+
+// 깊은 복사 — 편집 시 원본 상수(MAJOR_CATEGORIES/BUILDINGS)를 오염시키지 않도록.
+function seedCategories(): AssetMajorCategory[] {
+  return MAJOR_CATEGORIES.map((m) => ({ ...m, middles: m.middles.map((mid) => ({ ...mid })) }));
+}
+function seedBuildings(): Building[] {
+  return BUILDINGS.map((b) => ({ ...b }));
+}
+function seedAccounts(): Account[] {
+  return [
+    { id: "acc-1", name: "시스템 관리자", email: "admin@sadan.local", role: "admin", permissions: ROLE_PRESETS.admin, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
+    { id: "acc-2", name: "자산관리 담당자", email: "manager@sadan.local", role: "asset_manager", permissions: ROLE_PRESETS.asset_manager, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
+    { id: "acc-3", name: "감사 조회자", email: "auditor@sadan.local", role: "auditor", permissions: ROLE_PRESETS.auditor, active: true, createdAt: `${TODAY}T09:00:00.000Z` },
+  ];
 }
 
 // 2024-07 ~ 2026-06 월 목록 + 가중치 (초기 대량 + 2026 신규 스파이크).
@@ -131,6 +153,7 @@ export function generateDataset(seed = GEN_SEED): Dataset {
       id: `loan-${a.id}`, assetId: a.id, managementNo: a.lockedManagementNo ?? "", itemName: `사업단 노트북 #${n + 1}`,
       status, userName: user, loanedAt, dueAt, returnedAt: null,
       note: status === "수리" ? "키보드 A/S" : status === "대여중" ? "반납 임박" : null,
+      isNotebook: true,
     });
   });
 
@@ -236,5 +259,8 @@ export function generateDataset(seed = GEN_SEED): Dataset {
     { id: "a-loan", entityType: "laptop", action: "loan", summary: "노트북 대여 처리: 전상철", actor: "manager@sadan.local", createdAt: `${addDays(TODAY, -1)}T14:03:00.000Z` },
   ];
 
-  return { assets, laptopLoans, consumables, seats, importJob, auditLogs };
+  return {
+    assets, laptopLoans, consumables, seats, importJob, auditLogs,
+    categories: seedCategories(), buildings: seedBuildings(), accounts: seedAccounts(),
+  };
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, AlertTriangle, Info, Coins, MapPin, ScanLine, History } from "lucide-react";
-import { getAssetById, isMismatch, getLaptopLoans } from "@/data";
+import { getAssetById, isMismatch, getLoanForAsset, isAssetOnLoan } from "@/data";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { AssetActions } from "@/components/assets/asset-actions";
@@ -9,12 +9,15 @@ import { AssetDetailCard } from "@/components/assets/asset-detail-card";
 import { AssetStatusBadge, UsageBadge, TagStatusBadge, RfidStatusBadge } from "@/components/badges/status-badge";
 import { StatusBadge } from "@/components/badges/status-badge";
 
+export const dynamic = "force-dynamic";
+
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const asset = getAssetById(id);
   if (!asset) notFound();
-  const loan = getLaptopLoans().find((l) => l.assetId === asset.id);
-  const isNotebook = !!loan;
+  const loan = getLoanForAsset(asset.id);
+  const isNotebook = !!loan?.isNotebook;
+  const onLoan = isAssetOnLoan(asset);
 
   const history = [
     { action: "등록", summary: `자산 최초 등록 (${asset.lockedManagementNo})`, at: asset.createdAt, tone: "lavender" as const },
@@ -39,11 +42,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <p className="mt-1 text-sm text-muted-foreground">{asset.specification}</p>
             <p className="mt-2 font-mono text-sm font-medium text-foreground/80">{asset.lockedManagementNo}</p>
           </div>
-          <AssetActions
-            assetId={asset.id}
-            itemName={asset.itemName}
-            loan={loan ? { id: loan.id, status: loan.status } : null}
-          />
+          <AssetActions assetId={asset.id} itemName={asset.itemName} onLoan={onLoan} />
         </div>
 
         {isMismatch(asset) && (

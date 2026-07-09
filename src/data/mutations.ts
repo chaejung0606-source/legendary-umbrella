@@ -1,5 +1,6 @@
 import type {
   Asset, AssetStatus, ConsumableItem, LaptopLoan, LoanStatus, Seat, TagStatus, UsageType,
+  Account, AssetMajorCategory, AssetMiddleCategory, Building,
 } from "@/types";
 import { USAGE_TYPES } from "@/types";
 import { dataset } from "./index";
@@ -138,16 +139,40 @@ export function moveAsset(
   return asset;
 }
 
-// ─── 노트북 대여 ───
-export function loanLaptop(loanId: string, userName: string, dueAt: string | null): LaptopLoan | null {
-  const loan = dataset.laptopLoans.find((l) => l.id === loanId);
+// ─── 대여 (노트북 포함 전체 자산) ───
+// 자산 단위로 동작한다. 대여 기록이 없는 일반 자산은 즉석에서 생성한다.
+function ensureLoan(assetId: string): LaptopLoan | null {
+  const asset = dataset.assets.find((a) => a.id === assetId);
+  if (!asset) return null;
+  let loan = dataset.laptopLoans.find((l) => l.assetId === assetId);
+  if (!loan) {
+    loan = {
+      id: `loan-${asset.id}`,
+      assetId: asset.id,
+      managementNo: asset.lockedManagementNo ?? asset.generatedManagementNo ?? "",
+      itemName: asset.itemName,
+      status: "보관",
+      userName: null,
+      loanedAt: null,
+      dueAt: null,
+      returnedAt: null,
+      note: null,
+      isNotebook: false,
+    };
+    dataset.laptopLoans.push(loan);
+  }
+  return loan;
+}
+
+export function loanAsset(assetId: string, userName: string, dueAt: string | null): LaptopLoan | null {
+  const loan = ensureLoan(assetId);
   if (!loan) return null;
   loan.status = "대여중";
   loan.userName = userName;
   loan.loanedAt = TODAY;
   loan.dueAt = dueAt;
   loan.returnedAt = null;
-  const asset = dataset.assets.find((a) => a.id === loan.assetId);
+  const asset = dataset.assets.find((a) => a.id === assetId);
   if (asset) {
     asset.assetStatus = "대여중";
     asset.currentUserName = userName;
@@ -156,15 +181,15 @@ export function loanLaptop(loanId: string, userName: string, dueAt: string | nul
   return loan;
 }
 
-export function returnLaptop(loanId: string, afterStatus: LoanStatus, damaged: boolean): LaptopLoan | null {
-  const loan = dataset.laptopLoans.find((l) => l.id === loanId);
+export function returnAsset(assetId: string, afterStatus: LoanStatus, damaged: boolean): LaptopLoan | null {
+  const loan = ensureLoan(assetId);
   if (!loan) return null;
   loan.status = afterStatus;
   loan.userName = null;
   loan.dueAt = null;
   loan.returnedAt = TODAY;
   if (damaged) loan.note = "반납 시 손상 확인";
-  const asset = dataset.assets.find((a) => a.id === loan.assetId);
+  const asset = dataset.assets.find((a) => a.id === assetId);
   if (asset) {
     const map: Partial<Record<LoanStatus, AssetStatus>> = {
       보관: "보관중", 수리: "수리중", 분실: "분실", 폐기: "폐기예정",
@@ -265,4 +290,157 @@ export function commitImport(payload: ImportCommitPayload): { assets: number; co
   dataset.importJob.status = "committed";
 
   return { assets: payload.assets.length, consumables, seats, loans: loans.length };
+}
+
+// ─── 기준정보: 자산분류(대분류/중분류) — 관리번호 분류코드의 로우데이터 ───
+function slug(prefix: string): string {
+  // Date.now/Math.random 불가 → 데이터셋 길이 기반 단조 증가 id
+  return `${prefix}-${dataset.categories.reduce((n, c) => n + 1 + c.middles.length, 0)}-${dataset.buildings.length}`;
+}
+
+export function addMajorCategory(input: { code: number; name: string }): AssetMajorCategory | { error: string } {
+  if (!input.name.trim()) return { error: "대분류명을 입력해주세요." };
+  if (!Number.isFinite(input.code)) return { error: "대분류 코드는 숫자여야 합니다." };
+  if (dataset.categories.some((c) => c.code === input.code)) return { error: `이미 존재하는 대분류 코드입니다 (${input.code}).` };
+  const major: AssetMajorCategory = { id: `maj-${input.code}-${slug("m")}`, code: input.code, name: input.name.trim(), middles: [] };
+  dataset.categories.push(major);
+  dataset.categories.sort((a, b) => a.code - b.code);
+  return major;
+}
+
+export function updateMajorCategory(id: string, input: { code: number; name: string }): AssetMajorCategory | { error: string } {
+  const major = dataset.categories.find((c) => c.id === id);
+  if (!major) return { error: "대분류를 찾을 수 없습니다." };
+  if (dataset.categories.some((c) => c.id !== id && c.code === input.code)) return { error: `이미 존재하는 대분류 코드입니다 (${input.code}).` };
+  major.code = input.code;
+  major.name = input.name.trim();
+  return major;
+}
+
+export function deleteMajorCategory(id: string): { ok: true } | { error: string } {
+  const idx = dataset.categories.findIndex((c) => c.id === id);
+  if (idx < 0) return { error: "대분류를 찾을 수 없습니다." };
+  const inUse = dataset.assets.some((a) => a.majorCategory === dataset.categories[idx].name);
+  if (inUse) return { error: "이 대분류를 사용하는 자산이 있어 삭제할 수 없습니다." };
+  dataset.categories.splice(idx, 1);
+  return { ok: true };
+}
+
+export function addMiddleCategory(majorId: string, input: { code: number; name: string; detailItems?: string }): AssetMiddleCategory | { error: string } {
+  const major = dataset.categories.find((c) => c.id === majorId);
+  if (!major) return { error: "대분류를 먼저 선택해주세요." };
+  if (!input.name.trim()) return { error: "중분류명을 입력해주세요." };
+  if (!Number.isFinite(input.code)) return { error: "분류코드는 숫자여야 합니다." };
+  const middle: AssetMiddleCategory = {
+    id: `mid-${input.code}-${slug("d")}`,
+    code: input.code,
+    name: input.name.trim(),
+    majorId: major.id,
+    detailItems: input.detailItems?.split(",").map((s) => s.trim()).filter(Boolean),
+  };
+  major.middles.push(middle);
+  return middle;
+}
+
+export function updateMiddleCategory(id: string, input: { code: number; name: string; detailItems?: string }): AssetMiddleCategory | { error: string } {
+  for (const major of dataset.categories) {
+    const middle = major.middles.find((m) => m.id === id);
+    if (middle) {
+      middle.code = input.code;
+      middle.name = input.name.trim();
+      middle.detailItems = input.detailItems?.split(",").map((s) => s.trim()).filter(Boolean);
+      return middle;
+    }
+  }
+  return { error: "중분류를 찾을 수 없습니다." };
+}
+
+export function deleteMiddleCategory(id: string): { ok: true } | { error: string } {
+  for (const major of dataset.categories) {
+    const idx = major.middles.findIndex((m) => m.id === id);
+    if (idx >= 0) {
+      const inUse = dataset.assets.some((a) => a.middleCategory === major.middles[idx].name);
+      if (inUse) return { error: "이 중분류를 사용하는 자산이 있어 삭제할 수 없습니다." };
+      major.middles.splice(idx, 1);
+      return { ok: true };
+    }
+  }
+  return { error: "중분류를 찾을 수 없습니다." };
+}
+
+// ─── 기준정보: 건축물 코드 — 관리번호 건축물코드의 로우데이터 ───
+export function addBuilding(input: { code: string; name: string; campus?: string }): Building | { error: string } {
+  if (!input.code.trim()) return { error: "건축물코드를 입력해주세요." };
+  if (!input.name.trim()) return { error: "건축물명을 입력해주세요." };
+  if (dataset.buildings.some((b) => b.code === input.code.trim())) return { error: `이미 존재하는 건축물코드입니다 (${input.code}).` };
+  const building: Building = { id: `b-${input.code.trim()}`, code: input.code.trim(), name: input.name.trim(), campus: input.campus?.trim() || "강원대학교 춘천캠퍼스" };
+  dataset.buildings.push(building);
+  return building;
+}
+
+export function updateBuilding(id: string, input: { code: string; name: string; campus?: string }): Building | { error: string } {
+  const building = dataset.buildings.find((b) => b.id === id);
+  if (!building) return { error: "건축물을 찾을 수 없습니다." };
+  if (dataset.buildings.some((b) => b.id !== id && b.code === input.code.trim())) return { error: `이미 존재하는 건축물코드입니다 (${input.code}).` };
+  building.code = input.code.trim();
+  building.name = input.name.trim();
+  if (input.campus) building.campus = input.campus.trim();
+  return building;
+}
+
+export function deleteBuilding(id: string): { ok: true } | { error: string } {
+  const idx = dataset.buildings.findIndex((b) => b.id === id);
+  if (idx < 0) return { error: "건축물을 찾을 수 없습니다." };
+  const inUse = dataset.assets.some((a) => a.buildingCode === dataset.buildings[idx].code);
+  if (inUse) return { error: "이 건축물코드를 사용하는 자산이 있어 삭제할 수 없습니다." };
+  dataset.buildings.splice(idx, 1);
+  return { ok: true };
+}
+
+// ─── 계정 / 권한 ───
+export interface AccountInput {
+  name: string;
+  email: string;
+  role: string;
+  permissions: string[];
+  active: boolean;
+}
+
+export function createAccount(input: AccountInput): Account | { error: string } {
+  if (!input.name.trim()) return { error: "이름을 입력해주세요." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return { error: "올바른 이메일 형식이 아닙니다." };
+  if (dataset.accounts.some((a) => a.email.toLowerCase() === input.email.toLowerCase())) return { error: "이미 등록된 이메일입니다." };
+  const account: Account = {
+    id: `acc-${dataset.accounts.length + 1}-${dataset.accounts.reduce((n, a) => n + a.email.length, 0)}`,
+    name: input.name.trim(),
+    email: input.email.trim(),
+    role: input.role,
+    permissions: input.permissions,
+    active: input.active,
+    createdAt: nowIso(),
+  };
+  dataset.accounts.push(account);
+  return account;
+}
+
+export function updateAccount(id: string, input: AccountInput): Account | { error: string } {
+  const account = dataset.accounts.find((a) => a.id === id);
+  if (!account) return { error: "계정을 찾을 수 없습니다." };
+  if (dataset.accounts.some((a) => a.id !== id && a.email.toLowerCase() === input.email.toLowerCase())) return { error: "이미 등록된 이메일입니다." };
+  account.name = input.name.trim();
+  account.email = input.email.trim();
+  account.role = input.role;
+  account.permissions = input.permissions;
+  account.active = input.active;
+  return account;
+}
+
+export function deleteAccount(id: string): { ok: true } | { error: string } {
+  const idx = dataset.accounts.findIndex((a) => a.id === id);
+  if (idx < 0) return { error: "계정을 찾을 수 없습니다." };
+  if (dataset.accounts[idx].role === "admin" && dataset.accounts.filter((a) => a.role === "admin").length <= 1) {
+    return { error: "최소 1명의 관리자 계정은 유지해야 합니다." };
+  }
+  dataset.accounts.splice(idx, 1);
+  return { ok: true };
 }

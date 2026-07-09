@@ -3,13 +3,14 @@ import { Search, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { NativeSelect, Field } from "@/components/ui/form-controls";
-import { MAJOR_CATEGORIES } from "@/data/categories";
+import { getCategories } from "@/data";
 import { ASSET_STATUSES, USAGE_TYPES } from "@/types";
 
 type SP = Record<string, string | undefined>;
 
 export function AssetSearchFilters({ sp }: { sp: SP }) {
-  const middles = [...new Map(MAJOR_CATEGORIES.flatMap((m) => m.middles).map((mid) => [mid.name, mid])).values()];
+  const categories = getCategories();
+  const middles = [...new Map(categories.flatMap((m) => m.middles).map((mid) => [mid.name, mid])).values()];
   return (
     <form method="get" className="rounded-card bg-card p-5 shadow-soft ring-1 ring-black/[0.03]">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
@@ -22,7 +23,7 @@ export function AssetSearchFilters({ sp }: { sp: SP }) {
         <Field label="대분류">
           <NativeSelect name="major" defaultValue={sp.major ?? ""}>
             <option value="">전체</option>
-            {MAJOR_CATEGORIES.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
+            {categories.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
           </NativeSelect>
         </Field>
         <Field label="중분류">

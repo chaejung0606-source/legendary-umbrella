@@ -1,5 +1,6 @@
 import type {
   Asset, DashboardStats, MonthlyAcquisitionPoint, CategoryRatioPoint, LaptopLoan, ConsumableItem, Seat,
+  Account, AssetMajorCategory, Building,
 } from "@/types";
 import { generateDataset, type Dataset } from "./generate";
 import { TODAY } from "./pools";
@@ -148,6 +149,24 @@ export function getConsumableStats() {
     totalValue: items.reduce((s, c) => s + c.currentQty * c.unitPrice, 0),
   };
 }
+
+// ─── 대여 (전체 자산) ───
+export function getLoanForAsset(assetId: string): LaptopLoan | undefined {
+  return DATASET.laptopLoans.find((l) => l.assetId === assetId);
+}
+/** 현재 대여/사용 중인지 (자산 상태 또는 대여 기록 기준) */
+export function isAssetOnLoan(asset: Asset): boolean {
+  if (asset.assetStatus === "대여중") return true;
+  const loan = getLoanForAsset(asset.id);
+  return !!loan && (loan.status === "대여중" || loan.status === "직원사용");
+}
+
+// ─── 기준정보 (편집 가능) ───
+export const getCategories = (): AssetMajorCategory[] => DATASET.categories;
+export const getBuildings = (): Building[] => DATASET.buildings;
+
+// ─── 계정 / 권한 ───
+export const getAccounts = (): Account[] => DATASET.accounts;
 
 // ─── 좌석 / 가져오기 / 감사 ───
 export const getSeats = (): Seat[] => DATASET.seats;

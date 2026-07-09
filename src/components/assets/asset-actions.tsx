@@ -2,31 +2,29 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, ArrowLeftRight, Laptop, RotateCcw, Loader2 } from "lucide-react";
-import type { LaptopLoan, LoanStatus } from "@/types";
+import { Pencil, ArrowLeftRight, ArrowUpRight, RotateCcw, Loader2 } from "lucide-react";
+import type { LoanStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, NativeSelect } from "@/components/ui/form-controls";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toaster";
-import { moveAssetAction, loanLaptopAction, returnLaptopAction } from "@/app/actions";
+import { moveAssetAction, loanAssetAction, returnAssetAction } from "@/app/actions";
 
-// 자산 상세 헤더의 액션 버튼 묶음: 수정 / 이동 처리 / (노트북) 대여·반납 처리.
+// 자산 상세 헤더의 액션 버튼 묶음: 수정 / 이동 처리 / 대여·반납 처리 (전체 자산 대상).
 export function AssetActions({
   assetId,
   itemName,
-  loan,
+  onLoan,
 }: {
   assetId: string;
   itemName: string;
-  loan: Pick<LaptopLoan, "id" | "status"> | null;
+  onLoan: boolean; // 현재 대여/사용 중 여부
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [dialog, setDialog] = useState<"move" | "loan" | "return" | null>(null);
   const [pending, startTransition] = useTransition();
-
-  const loanedOut = loan ? loan.status === "직원사용" || loan.status === "대여중" : false;
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, successTitle: string) {
     startTransition(async () => {
@@ -46,12 +44,10 @@ export function AssetActions({
       <div className="flex shrink-0 flex-wrap gap-2">
         <Button asChild><Link href={`/assets/${assetId}/edit`}><Pencil className="h-4 w-4" /> 수정</Link></Button>
         <Button variant="outline" onClick={() => setDialog("move")}><ArrowLeftRight className="h-4 w-4" /> 이동 처리</Button>
-        {loan && (
-          loanedOut ? (
-            <Button variant="secondary" onClick={() => setDialog("return")}><RotateCcw className="h-4 w-4" /> 반납 처리</Button>
-          ) : (
-            <Button variant="secondary" onClick={() => setDialog("loan")}><Laptop className="h-4 w-4" /> 대여 처리</Button>
-          )
+        {onLoan ? (
+          <Button variant="secondary" onClick={() => setDialog("return")}><RotateCcw className="h-4 w-4" /> 반납 처리</Button>
+        ) : (
+          <Button variant="secondary" onClick={() => setDialog("loan")}><ArrowUpRight className="h-4 w-4" /> 대여 처리</Button>
         )}
       </div>
 
@@ -93,7 +89,7 @@ export function AssetActions({
       <Dialog open={dialog === "loan"} onOpenChange={(o) => !o && setDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>노트북 대여 처리</DialogTitle>
+            <DialogTitle>대여 처리</DialogTitle>
             <DialogDescription>{itemName}을(를) 대여 상태로 변경합니다.</DialogDescription>
           </DialogHeader>
           <form
@@ -101,7 +97,7 @@ export function AssetActions({
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
               run(
-                () => loanLaptopAction(loan!.id, String(fd.get("userName") ?? ""), String(fd.get("dueAt") ?? "") || null),
+                () => loanAssetAction(assetId, String(fd.get("userName") ?? ""), String(fd.get("dueAt") ?? "") || null),
                 "대여 처리 완료"
               );
             }}
@@ -120,7 +116,7 @@ export function AssetActions({
       <Dialog open={dialog === "return"} onOpenChange={(o) => !o && setDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>노트북 반납 처리</DialogTitle>
+            <DialogTitle>반납 처리</DialogTitle>
             <DialogDescription>{itemName}을(를) 반납 처리합니다.</DialogDescription>
           </DialogHeader>
           <form
@@ -128,7 +124,7 @@ export function AssetActions({
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
               run(
-                () => returnLaptopAction(loan!.id, String(fd.get("afterStatus") ?? "보관") as LoanStatus, fd.get("damaged") === "on"),
+                () => returnAssetAction(assetId, String(fd.get("afterStatus") ?? "보관") as LoanStatus, fd.get("damaged") === "on"),
                 "반납 처리 완료"
               );
             }}

@@ -76,7 +76,7 @@ export interface Asset {
   deletedAt?: string | null;
 }
 
-// ─── 노트북 대여 ───
+// ─── 대여 (노트북 포함 전체 자산) ───
 export interface LaptopLoan {
   id: string;
   assetId: string;
@@ -88,6 +88,18 @@ export interface LaptopLoan {
   dueAt?: string | null;
   returnedAt?: string | null;
   note?: string | null;
+  isNotebook?: boolean; // 노트북 대여현황 메뉴 필터용
+}
+
+// ─── 계정 / 권한 ───
+export interface Account {
+  id: string;
+  name: string;
+  email: string;
+  role: string; // ROLES 키 (admin/asset_manager/user/auditor) — 표시용 라벨
+  permissions: string[]; // 접근 가능한 메뉴 키 목록
+  active: boolean;
+  createdAt: string;
 }
 
 // ─── 연구재료/소모품 ───
