@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EditAssetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const asset = getAssetById(id);
+  const [asset, categories, buildings] = await Promise.all([getAssetById(id), getCategories(), getBuildings()]);
   if (!asset) notFound();
 
   return (
@@ -18,7 +18,7 @@ export default async function EditAssetPage({ params }: { params: Promise<{ id: 
         description={`${asset.itemName} · ${asset.lockedManagementNo}`}
         icon={<Pencil className="h-6 w-6" />}
       />
-      <AssetForm mode="edit" categories={getCategories()} buildings={getBuildings()} defaults={asset} />
+      <AssetForm mode="edit" categories={categories} buildings={buildings} defaults={asset} />
     </div>
   );
 }

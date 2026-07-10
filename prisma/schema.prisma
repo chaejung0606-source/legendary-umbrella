@@ -1,291 +1,130 @@
-// 사업단 자산관리 플랫폼 — Prisma schema (초안)
-//
-// 로컬 개발은 SQLite, 운영은 PostgreSQL 로 손쉽게 전환할 수 있도록 provider 만
-// 바꾸면 되게 설계했다(네이티브 enum/Decimal 미사용, 금액은 Int(KRW), 상태는
-// String + 앱 상수). 화면은 현재 더미 데이터(src/data)로 동작하며, 이 스키마는
-// 추후 실제 연동 시 그대로 사용할 수 있는 데이터 모델이다.
+// 사업단 자산관리 플랫폼 — Prisma schema
+// 앱 도메인 타입(src/types)과 1:1로 매핑되도록 비정규화. 상태/유형은 String + 앱 상수,
+// 금액·수량은 Int, 배열은 String[](Postgres), 좌석 슬롯은 Json.
+// 날짜류는 앱이 문자열(YYYY-MM-DD / ISO)로 다루므로 String 으로 저장해 변환 오류를 없앤다.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite" // 운영: "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // 풀링(pgbouncer) — 런타임 쿼리
+  directUrl = env("DIRECT_URL") // 직접 연결 — 마이그레이션/db push
 }
 
-// ─────────────────────────────────────────────
-// 사용자 / 권한
-// ─────────────────────────────────────────────
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         String   @default("user") // admin | asset_manager | user | auditor
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  auditLogs    AuditLog[]
-  importJobs   ImportJob[]
-  laptopLoans  LaptopLoan[]
-  movements    ConsumableMovement[]
+// ─── 계정 / 권한 ───
+model Account {
+  id          String   @id
+  name        String
+  email       String   @unique
+  password    String
+  role        String
+  permissions String[] // 접근 가능한 메뉴 키
+  active      Boolean  @default(true)
+  createdAt   String
 }
 
-// ─────────────────────────────────────────────
-// 기준정보 (자산분류 / 건축물 / 호실)
-// ─────────────────────────────────────────────
-model AssetMajorCategory {
-  id        String               @id @default(cuid())
-  code      Int                  @unique // 1..10
-  name      String
-  createdAt DateTime             @default(now())
-  middles   AssetMiddleCategory[]
-  assets    Asset[]
+// ─── 기준정보 ───
+model MajorCategory {
+  id      String           @id
+  code    Int
+  name    String
+  middles MiddleCategory[]
 }
 
-model AssetMiddleCategory {
-  id              String             @id @default(cuid())
-  code            Int // 분류코드 (예: 501) — 410 처럼 중복 가능하므로 unique 아님
-  name            String
-  detailItems     String             @default("")
-  majorCategory   AssetMajorCategory @relation(fields: [majorCategoryId], references: [id])
-  majorCategoryId String
-  createdAt       DateTime           @default(now())
-  assets          Asset[]
+model MiddleCategory {
+  id          String        @id
+  code        Int
+  name        String
+  detailItems String[]      @default([])
+  major       MajorCategory @relation(fields: [majorId], references: [id], onDelete: Cascade)
+  majorId     String
 
-  @@index([code])
-  @@index([majorCategoryId])
+  @@index([majorId])
 }
 
 model Building {
-  id        String   @id @default(cuid())
-  code      String   @unique // 건축물코드 (B0000142)
-  campus    String
-  name      String
-  createdAt DateTime @default(now())
-  rooms     Room[]
-  assets    Asset[]
-  seats     Seat[]
+  id     String @id
+  code   String @unique
+  campus String
+  name   String
 }
 
-model Room {
-  id         String   @id @default(cuid())
-  building   Building @relation(fields: [buildingId], references: [id])
-  buildingId String
-  name       String // 호실
-  assets     Asset[]
-  createdAt  DateTime @default(now())
-
-  @@unique([buildingId, name])
-}
-
-// ─────────────────────────────────────────────
-// 자산 원장
-// ─────────────────────────────────────────────
+// ─── 자산 원장 ───
 model Asset {
-  id                    String    @id @default(cuid())
-  legacyRowNo           Int? // 엑셀 연번
-  expenditureDocument   String? // 지출문서
-  managingOrganization  String? // 관리기관
-  majorCategory         AssetMajorCategory?  @relation(fields: [majorCategoryId], references: [id])
-  majorCategoryId       String?
-  middleCategory        AssetMiddleCategory? @relation(fields: [middleCategoryId], references: [id])
-  middleCategoryId      String?
-  classificationCode    Int? // 분류코드
-  acquiredDate          DateTime? // 취득날짜
-  itemName              String // 품명
-  specification         String? // 규격
-  unitPrice             Int       @default(0) // 취득단가 (KRW)
-  sequenceNo            Int? // 번호
-  place                 String? // 장소
-  roomName              String? // 호실
-  buildingCode          String? // 건축물코드
-  building              Building? @relation(fields: [buildingId], references: [id])
-  buildingId            String?
-  room                  Room?     @relation(fields: [roomId], references: [id])
-  roomId                String?
-
-  // 관리번호: 가져온 값은 lockedManagementNo 에 보존, 계산값은 generatedManagementNo.
+  id                    String  @id
+  legacyRowNo           Int?
+  expenditureDocument   String?
+  managingOrganization  String?
+  majorCategory         String
+  middleCategory        String
+  classificationCode    Int?
+  acquiredDate          String?
+  itemName              String
+  specification         String?
+  unitPrice             Int     @default(0)
+  sequenceNo            Int?
+  place                 String?
+  roomName              String?
+  buildingCode          String?
   generatedManagementNo String?
-  lockedManagementNo    String?   @unique // 중복 불가
-
-  schoolRfidNo          String? // RFID번호(학교)
-  usageType             String    @default("미확인") // 개인사용 | 좌석사용 | 사무실보관 | 대여용 | 소모품 | 미확인
-  currentUserName       String? // 사용자
-  currentLocationNote   String? // 사용처 비고
-  tagStatus             String    @default("미지정") // 부착 | 미부착 | 미발급 | 손상 | 미지정
-  assetStatus           String    @default("정상") // 정상 | 사용중 | 보관중 | 대여중 | 점검필요 | 수리중 | 분실 | 폐기예정
+  lockedManagementNo    String?
+  schoolRfidNo          String?
+  usageType             String  @default("미확인")
+  currentUserName       String?
+  currentLocationNote   String?
+  tagStatus             String  @default("미지정")
+  assetStatus           String  @default("정상")
   memo                  String?
+  createdAt             String
+  updatedAt             String
+  deletedAt             String?
 
-  createdById String?
-  importJob   ImportJob? @relation(fields: [importJobId], references: [id])
-  importJobId String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  deletedAt   DateTime? // soft delete
-
-  rfidTag    RfidTag?
-  laptopLoan LaptopLoan?
-  seatAssets SeatAsset[]
-
-  @@index([schoolRfidNo])
   @@index([itemName])
-  @@index([usageType])
   @@index([assetStatus])
   @@index([buildingCode])
-  @@index([deletedAt])
-  @@index([acquiredDate])
+  @@index([schoolRfidNo])
 }
 
-// ─────────────────────────────────────────────
-// RFID 태그
-// ─────────────────────────────────────────────
-model RfidTag {
-  id        String   @id @default(cuid())
-  code      String   @unique // RFID 값
-  asset     Asset?   @relation(fields: [assetId], references: [id])
-  assetId   String?  @unique
-  status    String   @default("registered") // registered | unissued | damaged
-  issuedAt  DateTime?
-  createdAt DateTime @default(now())
-}
-
-// ─────────────────────────────────────────────
-// 노트북 대여
-// ─────────────────────────────────────────────
+// ─── 대여 (노트북 포함 전체 자산) ───
 model LaptopLoan {
-  id          String    @id @default(cuid())
-  asset       Asset     @relation(fields: [assetId], references: [id])
-  assetId     String    @unique
-  status      String    @default("보관") // 보관 | 직원사용 | 대여중 | 수리 | 분실 | 폐기
-  userName    String? // 사용자/대여자
-  loanedAt    DateTime?
-  dueAt       DateTime?
-  returnedAt  DateTime?
-  damaged     Boolean   @default(false)
-  note        String?
-  byUser      User?     @relation(fields: [byUserId], references: [id])
-  byUserId    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String  @id
+  assetId      String  @unique
+  managementNo String
+  itemName     String
+  status       String  @default("보관")
+  userName     String?
+  loanedAt     String?
+  dueAt        String?
+  returnedAt   String?
+  note         String?
+  isNotebook   Boolean @default(false)
 
   @@index([status])
 }
 
-// ─────────────────────────────────────────────
-// 연구재료 / 소모품 (수량 기반 재고)
-// ─────────────────────────────────────────────
+// ─── 연구재료 / 소모품 ───
 model ConsumableItem {
-  id                  String               @id @default(cuid())
+  id                  String  @id
   itemName            String
   specification       String?
-  unitPrice           Int                  @default(0)
-  safetyQty           Int                  @default(0)
-  unit                String               @default("개")
+  unitPrice           Int     @default(0)
+  currentQty          Int     @default(0)
+  safetyQty           Int     @default(0)
+  unit                String  @default("개")
   location            String?
   roomName            String?
   expenditureDocument String?
-  deletedAt           DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  movements           ConsumableMovement[]
-
-  @@index([itemName])
+  lastInboundAt       String?
+  lastOutboundAt      String?
+  status              String  @default("정상")
 }
 
-model ConsumableMovement {
-  id        String         @id @default(cuid())
-  item      ConsumableItem @relation(fields: [itemId], references: [id])
-  itemId    String
-  type      String // in | out | adjust
-  qty       Int
-  reason    String?
-  byUser    User?          @relation(fields: [byUserId], references: [id])
-  byUserId  String?
-  createdAt DateTime       @default(now())
-
-  @@index([itemId])
-}
-
-// ─────────────────────────────────────────────
-// 좌석 / 배치
-// ─────────────────────────────────────────────
+// ─── 좌석 / 배치 ───
 model Seat {
-  id           String      @id @default(cuid())
-  code         String      @unique // A..O
+  id           String  @id
+  code         String  @unique
   occupantName String?
-  building     Building?   @relation(fields: [buildingId], references: [id])
-  buildingId   String?
-  assets       SeatAsset[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-}
-
-model SeatAsset {
-  id          String   @id @default(cuid())
-  seat        Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
-  seatId      String
-  slot        String // desktop | monitor | printer | phone
-  rawValue    String?
-  asset       Asset?   @relation(fields: [assetId], references: [id])
-  assetId     String?
-  needsReview Boolean  @default(false)
-  reviewNote  String?
-  createdAt   DateTime @default(now())
-
-  @@index([seatId])
-}
-
-// ─────────────────────────────────────────────
-// 엑셀 가져오기
-// ─────────────────────────────────────────────
-model ImportJob {
-  id          String        @id @default(cuid())
-  fileName    String
-  status      String        @default("pending") // pending | validated | committed | failed
-  stats       String? // JSON
-  options     String? // JSON
-  createdBy   User?         @relation(fields: [createdById], references: [id])
-  createdById String?
-  createdAt   DateTime      @default(now())
-  committedAt DateTime?
-  errors      ImportError[]
-  assets      Asset[]
-}
-
-model ImportError {
-  id          String    @id @default(cuid())
-  importJob   ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
-  importJobId String
-  sheet       String
-  rowNo       Int?
-  field       String?
-  type        String // 오류 유형
-  rawValue    String?
-  message     String
-  severity    String // error | warning | info
-  createdAt   DateTime  @default(now())
-
-  @@index([importJobId])
-}
-
-// ─────────────────────────────────────────────
-// 감사 로그
-// ─────────────────────────────────────────────
-model AuditLog {
-  id          String   @id @default(cuid())
-  entityType  String // asset | laptop | consumable | seat | import | user
-  entityId    String?
-  action      String // create | update | delete | move | loan | return | tag | import | login
-  summary     String?
-  changes     String? // JSON diff
-  byUser      User?    @relation(fields: [byUserId], references: [id])
-  byUserId    String?
-  byUserEmail String?
-  createdAt   DateTime @default(now())
-
-  @@index([entityType, entityId])
-  @@index([createdAt])
+  assets       Json // SeatAsset[]
 }

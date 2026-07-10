@@ -6,7 +6,7 @@ import { signSession, firstAllowedPath, SESSION_COOKIE } from "@/lib/session";
 type LoginResult = { ok: true; redirect: string } | { ok: false; error: string };
 
 export async function loginAction(email: string, password: string): Promise<LoginResult> {
-  const result = verifyLogin(email, password);
+  const result = await verifyLogin(email, password);
   if ("error" in result) return { ok: false, error: result.error };
 
   const token = await signSession({

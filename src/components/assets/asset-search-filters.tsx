@@ -8,8 +8,8 @@ import { ASSET_STATUSES, USAGE_TYPES } from "@/types";
 
 type SP = Record<string, string | undefined>;
 
-export function AssetSearchFilters({ sp }: { sp: SP }) {
-  const categories = getCategories();
+export async function AssetSearchFilters({ sp }: { sp: SP }) {
+  const categories = await getCategories();
   const middles = [...new Map(categories.flatMap((m) => m.middles).map((mid) => [mid.name, mid])).values()];
   return (
     <form method="get" className="rounded-card bg-card p-5 shadow-soft ring-1 ring-black/[0.03]">

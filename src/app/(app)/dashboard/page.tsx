@@ -14,13 +14,15 @@ import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  const stats = getDashboardStats();
-  const monthly = getMonthlyAcquisition();
-  const categories = getCategoryRatio();
-  const recent = getRecentAssets(5);
-  const returnDue = getReturnDueLaptops(7);
-  const rfidCheck = getRfidCheckAssets(5);
+export default async function DashboardPage() {
+  const [stats, monthly, categories, recent, returnDue, rfidCheck] = await Promise.all([
+    getDashboardStats(),
+    getMonthlyAcquisition(),
+    getCategoryRatio(),
+    getRecentAssets(5),
+    getReturnDueLaptops(7),
+    getRfidCheckAssets(5),
+  ]);
 
   const heroBtn = "inline-flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-brand-700 shadow-pill transition hover:bg-white";
 

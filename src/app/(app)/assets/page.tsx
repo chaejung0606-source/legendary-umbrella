@@ -12,7 +12,7 @@ type SP = Record<string, string | undefined>;
 export default async function AssetsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
-  const result = filterAssets({
+  const result = await filterAssets({
     q: sp.q, major: sp.major, middle: sp.middle, place: sp.place, room: sp.room,
     usage: sp.usage, status: sp.status, rfid: sp.rfid as never, page, pageSize: 20,
   });

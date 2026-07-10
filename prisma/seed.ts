@@ -1,56 +1,60 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { generateDataset } from "../src/data/generate";
 
-// 초기 계정 + 기준정보 일부 시드. 화면은 더미 데이터(src/data)로 동작하므로
-// 이 시드는 추후 실제 연동 시 출발점이다.
+// 최초 1회만 더미 데이터를 DB에 시드한다. 각 테이블은 비어 있을 때만 채우므로
+// 재배포(재시드)해도 사용자가 편집한 데이터는 유지된다(idempotent).
 const prisma = new PrismaClient();
 
-const USERS = [
-  { email: process.env.SEED_ADMIN_EMAIL ?? "admin@sadan.local", name: process.env.SEED_ADMIN_NAME ?? "시스템 관리자", role: "admin", pw: process.env.SEED_ADMIN_PASSWORD ?? "admin1234" },
-  { email: "manager@sadan.local", name: "자산담당자", role: "asset_manager", pw: "demo1234" },
-  { email: "auditor@sadan.local", name: "감사담당", role: "auditor", pw: "demo1234" },
-  { email: "user@sadan.local", name: "일반사용자", role: "user", pw: "demo1234" },
-];
-
-const MAJORS: { code: number; name: string; middles: { code: number; name: string }[] }[] = [
-  { code: 4, name: "가구", middles: [{ code: 401, name: "책상" }, { code: 404, name: "의자" }, { code: 410, name: "파티션" }] },
-  { code: 5, name: "사무용장비", middles: [{ code: 501, name: "컴퓨터" }, { code: 503, name: "출력장비" }] },
-  { code: 7, name: "전산장비", middles: [{ code: 701, name: "서버" }, { code: 702, name: "스토리지" }] },
-];
-
-const BUILDINGS = [
-  { code: "B0000142", campus: "강원대학교 춘천캠퍼스", name: "집현관(제2도서관)" },
-  { code: "B0000038", campus: "강원대학교 춘천캠퍼스", name: "보듬관" },
-];
-
 async function main() {
-  console.log("Seeding users…");
-  for (const u of USERS) {
-    await prisma.user.upsert({
-      where: { email: u.email },
-      update: { name: u.name, role: u.role, isActive: true },
-      create: { email: u.email, name: u.name, role: u.role, isActive: true, passwordHash: await bcrypt.hash(u.pw, 10) },
-    });
-    console.log(`  ✓ ${u.role.padEnd(14)} ${u.email}`);
+  const ds = generateDataset();
+
+  if ((await prisma.account.count()) === 0) {
+    await prisma.account.createMany({ data: ds.accounts });
+    console.log(`  ✓ accounts ${ds.accounts.length}`);
   }
 
-  console.log("Seeding 자산분류 코드…");
-  for (const maj of MAJORS) {
-    const major = await prisma.assetMajorCategory.upsert({
-      where: { code: maj.code }, update: { name: maj.name }, create: { code: maj.code, name: maj.name },
-    });
-    for (const mid of maj.middles) {
-      const exists = await prisma.assetMiddleCategory.findFirst({ where: { code: mid.code, name: mid.name, majorCategoryId: major.id } });
-      if (!exists) await prisma.assetMiddleCategory.create({ data: { code: mid.code, name: mid.name, majorCategoryId: major.id } });
+  if ((await prisma.majorCategory.count()) === 0) {
+    for (const m of ds.categories) {
+      await prisma.majorCategory.create({ data: { id: m.id, code: m.code, name: m.name } });
+      if (m.middles.length) {
+        await prisma.middleCategory.createMany({
+          data: m.middles.map((mid) => ({
+            id: mid.id, code: mid.code, name: mid.name, majorId: m.id, detailItems: mid.detailItems ?? [],
+          })),
+        });
+      }
     }
+    console.log(`  ✓ categories ${ds.categories.length}`);
   }
 
-  console.log("Seeding 건축물 코드…");
-  for (const b of BUILDINGS) {
-    await prisma.building.upsert({ where: { code: b.code }, update: { name: b.name, campus: b.campus }, create: b });
+  if ((await prisma.building.count()) === 0) {
+    await prisma.building.createMany({ data: ds.buildings.map((b) => ({ id: b.id, code: b.code, campus: b.campus, name: b.name })) });
+    console.log(`  ✓ buildings ${ds.buildings.length}`);
   }
 
-  console.log("Done.");
+  if ((await prisma.asset.count()) === 0) {
+    await prisma.asset.createMany({ data: ds.assets.map((a) => ({ ...a })) });
+    console.log(`  ✓ assets ${ds.assets.length}`);
+  }
+
+  if ((await prisma.laptopLoan.count()) === 0) {
+    await prisma.laptopLoan.createMany({ data: ds.laptopLoans.map((l) => ({ ...l })) });
+    console.log(`  ✓ laptopLoans ${ds.laptopLoans.length}`);
+  }
+
+  if ((await prisma.consumableItem.count()) === 0) {
+    await prisma.consumableItem.createMany({ data: ds.consumables.map((c) => ({ ...c })) });
+    console.log(`  ✓ consumables ${ds.consumables.length}`);
+  }
+
+  if ((await prisma.seat.count()) === 0) {
+    await prisma.seat.createMany({
+      data: ds.seats.map((s) => ({ id: s.id, code: s.code, occupantName: s.occupantName ?? null, assets: s.assets as object })),
+    });
+    console.log(`  ✓ seats ${ds.seats.length}`);
+  }
+
+  console.log("Seed done.");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

@@ -7,8 +7,8 @@ import { SeatGrid } from "@/components/seats/seat-grid";
 
 export const dynamic = "force-dynamic";
 
-export default function SeatsPage() {
-  const seats = getSeats();
+export default async function SeatsPage() {
+  const seats = await getSeats();
   const assigned = seats.filter((s) => s.occupantName).length;
   const reviewCount = seats.reduce((n, s) => n + s.assets.filter((a) => a.needsReview).length, 0);
 

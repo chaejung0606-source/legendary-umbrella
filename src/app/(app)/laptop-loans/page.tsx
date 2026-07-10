@@ -7,10 +7,11 @@ import { LaptopLoanTable } from "@/components/laptops/laptop-loan-table";
 
 export const dynamic = "force-dynamic";
 
-export default function LaptopLoansPage() {
+export default async function LaptopLoansPage() {
   // 노트북 대여현황 전용 화면 — 노트북으로 지정된 자산만 모아 현황을 바로 파악한다.
   // (전체 자산 대여/반납 처리는 자산 상세의 '대여 처리'에서 수행)
-  const loans = getLaptopLoans().filter((l) => l.isNotebook);
+  const [allLoans, dueAll] = await Promise.all([getLaptopLoans(), getReturnDueLaptops(7)]);
+  const loans = allLoans.filter((l) => l.isNotebook);
   const by = (s: string) => loans.filter((l) => l.status === s).length;
   const stats = {
     total: loans.length,
@@ -19,7 +20,7 @@ export default function LaptopLoansPage() {
     loaned: by("대여중"),
     repair: by("수리") + by("분실") + by("폐기"),
   };
-  const due = getReturnDueLaptops(7).filter((l) => l.isNotebook);
+  const due = dueAll.filter((l) => l.isNotebook);
 
   return (
     <div className="space-y-5">

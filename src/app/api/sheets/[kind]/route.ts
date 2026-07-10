@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
   const { kind } = await ctx.params;
 
   if (kind === "assets") {
-    const { rows } = filterAssets({ page: 1, pageSize: Number.MAX_SAFE_INTEGER });
+    const { rows } = await filterAssets({ page: 1, pageSize: Number.MAX_SAFE_INTEGER });
     const headers = ["연번", "관리번호", "품명", "규격", "대분류", "중분류", "분류코드", "취득일", "취득단가", "장소", "호실", "건축물코드", "사용유형", "사용자", "RFID번호", "태그상태", "자산상태"];
     const data = rows.map((a) => [
       a.legacyRowNo, a.lockedManagementNo, a.itemName, a.specification, a.majorCategory, a.middleCategory,
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
 
   if (kind === "loans") {
     const headers = ["관리번호", "품명", "구분", "상태", "사용자", "대여일", "반납예정", "반납일", "비고"];
-    const data = getLaptopLoans().map((l) => [
+    const data = (await getLaptopLoans()).map((l) => [
       l.managementNo, l.itemName, l.isNotebook ? "노트북" : "일반자산", l.status, l.userName,
       l.loanedAt, l.dueAt, l.returnedAt, l.note,
     ]);
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
 
   if (kind === "materials") {
     const headers = ["품명", "규격", "단위", "현재재고", "안전재고", "단가", "재고금액", "보관장소", "호실", "최근입고", "최근출고", "상태"];
-    const data = getConsumables().map((c) => [
+    const data = (await getConsumables()).map((c) => [
       c.itemName, c.specification, c.unit, c.currentQty, c.safetyQty, c.unitPrice, c.unitPrice * c.currentQty,
       c.location, c.roomName, c.lastInboundAt, c.lastOutboundAt, c.status,
     ]);

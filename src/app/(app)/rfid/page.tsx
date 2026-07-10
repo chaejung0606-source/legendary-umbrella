@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ScanLine, BadgeCheck, BadgeAlert, Tag } from "lucide-react";
-import { dataset, filterAssets } from "@/data";
+import { getActiveAssets, filterAssets } from "@/data";
 import { formatNumber } from "@/lib/format";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/cards/stat-card";
@@ -12,17 +12,16 @@ import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-export default function RfidPage() {
-  const assets = dataset.assets.filter((a) => !a.deletedAt);
+export default async function RfidPage() {
+  const [assets, missingList] = await Promise.all([getActiveAssets(), filterAssets({ rfid: "missing", pageSize: 15 })]);
   const registered = assets.filter((a) => a.schoolRfidNo).length;
   const missing = assets.length - registered;
-  const rate = Math.round((registered / assets.length) * 100);
+  const rate = assets.length ? Math.round((registered / assets.length) * 100) : 0;
 
   const tagKeys = [...TAG_STATUSES, "미지정"] as const;
   const tagCounts = tagKeys.map((t) => ({ name: t, count: assets.filter((a) => a.tagStatus === t).length }));
   const damaged = assets.filter((a) => a.tagStatus === "손상").length;
   const maxTag = Math.max(1, ...tagCounts.map((t) => t.count));
-  const missingList = filterAssets({ rfid: "missing", pageSize: 15 });
 
   return (
     <div className="space-y-5">

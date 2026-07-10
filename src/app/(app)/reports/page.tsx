@@ -10,10 +10,8 @@ import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-export default function ReportsPage() {
-  const monthly = getMonthlyAcquisition();
-  const categories = getCategoryRatio();
-  const stats = getDashboardStats();
+export default async function ReportsPage() {
+  const [monthly, categories, stats] = await Promise.all([getMonthlyAcquisition(), getCategoryRatio(), getDashboardStats()]);
   const totalAmount = categories.reduce((s, c) => s + c.amount, 0);
 
   return (

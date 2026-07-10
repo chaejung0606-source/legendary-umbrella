@@ -13,11 +13,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const asset = getAssetById(id);
+  const asset = await getAssetById(id);
   if (!asset) notFound();
-  const loan = getLoanForAsset(asset.id);
+  const loan = await getLoanForAsset(asset.id);
   const isNotebook = !!loan?.isNotebook;
-  const onLoan = isAssetOnLoan(asset);
+  const onLoan = await isAssetOnLoan(asset);
 
   const history = [
     { action: "등록", summary: `자산 최초 등록 (${asset.lockedManagementNo})`, at: asset.createdAt, tone: "lavender" as const },

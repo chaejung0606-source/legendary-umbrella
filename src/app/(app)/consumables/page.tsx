@@ -8,9 +8,8 @@ import { ConsumableActions } from "@/components/consumables/consumable-actions";
 
 export const dynamic = "force-dynamic";
 
-export default function ConsumablesPage() {
-  const items = getConsumables();
-  const stats = getConsumableStats();
+export default async function ConsumablesPage() {
+  const [items, stats] = await Promise.all([getConsumables(), getConsumableStats()]);
 
   return (
     <div className="space-y-5">

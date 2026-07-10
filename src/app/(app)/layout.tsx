@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) redirect("/");
 
   // 계정의 최신 권한을 데이터셋에서 조회(관리자 편집 즉시 반영). 없으면 세션값 사용.
-  const account = getAccountById(session.sub);
+  const account = await getAccountById(session.sub);
   const perms = account?.permissions ?? session.perms ?? [];
   const user = { name: account?.name ?? session.name, email: account?.email ?? session.email };
 
@@ -28,9 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     return !key || perms.includes(key);
   }).map((item) => item.href);
 
-  const stats = getDashboardStats();
-  const due = getReturnDueLaptops(7);
-  const consumables = getConsumableStats();
+  const [stats, due, consumables] = await Promise.all([getDashboardStats(), getReturnDueLaptops(7), getConsumableStats()]);
 
   const notifications: HeaderNotification[] = [
     ...(due.length > 0

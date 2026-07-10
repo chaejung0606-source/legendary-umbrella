@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
   const sp = req.nextUrl.searchParams;
 
   if (kind === "assets") {
-    const result = filterAssets({
+    const result = await filterAssets({
       q: sp.get("q") ?? undefined,
       major: sp.get("major") ?? undefined,
       middle: sp.get("middle") ?? undefined,
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
   }
 
   if (kind === "consumables") {
-    const rows = getConsumables().map((c) => ({
+    const rows = (await getConsumables()).map((c) => ({
       품명: c.itemName, 규격: c.specification, 단위: c.unit, 현재재고: c.currentQty, 안전재고: c.safetyQty,
       단가: c.unitPrice, 재고금액: c.unitPrice * c.currentQty, 보관장소: c.location, 호실: c.roomName,
       최근입고: c.lastInboundAt, 최근출고: c.lastOutboundAt, 상태: c.status,
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
   }
 
   if (kind === "report") {
-    const stats = getDashboardStats();
+    const stats = await getDashboardStats();
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(
       wb,
@@ -76,12 +76,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     );
     XLSX.utils.book_append_sheet(
       wb,
-      sheetFromRows(getMonthlyAcquisition().map((m) => ({ 월: m.month, 등록건수: m.count, 취득금액: m.amount }))),
+      sheetFromRows((await getMonthlyAcquisition()).map((m) => ({ 월: m.month, 등록건수: m.count, 취득금액: m.amount }))),
       "월별취득"
     );
     XLSX.utils.book_append_sheet(
       wb,
-      sheetFromRows(getCategoryRatio().map((c) => ({ 대분류: c.name, 자산수: c.count, 취득금액: c.amount }))),
+      sheetFromRows((await getCategoryRatio()).map((c) => ({ 대분류: c.name, 자산수: c.count, 취득금액: c.amount }))),
       "대분류별"
     );
     return workbookResponse(wb, `자산리포트_${TODAY}.xlsx`);
