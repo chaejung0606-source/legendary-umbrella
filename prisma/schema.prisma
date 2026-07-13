@@ -4,13 +4,16 @@
 // 날짜류는 앱이 문자열(YYYY-MM-DD / ISO)로 다루므로 String 으로 저장해 변환 오류를 없앤다.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL") // 풀링(pgbouncer) — 런타임 쿼리
   directUrl = env("DIRECT_URL") // 직접 연결 — 마이그레이션/db push
+  // 앱 테이블을 전용 스키마(sadan)로 격리 → 기존 public/auth 테이블과 충돌 없음
+  schemas   = ["sadan"]
 }
 
 // ─── 계정 / 권한 ───
@@ -23,6 +26,7 @@ model Account {
   permissions String[] // 접근 가능한 메뉴 키
   active      Boolean  @default(true)
   createdAt   String
+  @@schema("sadan")
 }
 
 // ─── 기준정보 ───
@@ -31,6 +35,7 @@ model MajorCategory {
   code    Int
   name    String
   middles MiddleCategory[]
+  @@schema("sadan")
 }
 
 model MiddleCategory {
@@ -42,6 +47,7 @@ model MiddleCategory {
   majorId     String
 
   @@index([majorId])
+  @@schema("sadan")
 }
 
 model Building {
@@ -49,6 +55,7 @@ model Building {
   code   String @unique
   campus String
   name   String
+  @@schema("sadan")
 }
 
 // ─── 자산 원장 ───
@@ -85,6 +92,7 @@ model Asset {
   @@index([assetStatus])
   @@index([buildingCode])
   @@index([schoolRfidNo])
+  @@schema("sadan")
 }
 
 // ─── 대여 (노트북 포함 전체 자산) ───
@@ -102,6 +110,7 @@ model LaptopLoan {
   isNotebook   Boolean @default(false)
 
   @@index([status])
+  @@schema("sadan")
 }
 
 // ─── 연구재료 / 소모품 ───
@@ -119,6 +128,7 @@ model ConsumableItem {
   lastInboundAt       String?
   lastOutboundAt      String?
   status              String  @default("정상")
+  @@schema("sadan")
 }
 
 // ─── 좌석 / 배치 ───
@@ -127,4 +137,5 @@ model Seat {
   code         String  @unique
   occupantName String?
   assets       Json // SeatAsset[]
+  @@schema("sadan")
 }
