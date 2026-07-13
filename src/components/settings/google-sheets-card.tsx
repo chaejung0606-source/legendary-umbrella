@@ -5,10 +5,20 @@ import { SoftCard } from "@/components/cards/soft-card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toaster";
 
+// 플랫폼과 연결된 실제 구글시트 (드라이브에 생성된 문서)
 const SHEETS = [
-  { key: "assets", label: "자산 현황", icon: Table2, desc: "전체 자산 원장" },
-  { key: "loans", label: "대여 현황", icon: Repeat, desc: "노트북·일반자산 대여" },
-  { key: "materials", label: "재료 현황", icon: FlaskConical, desc: "연구재료/소모품 재고" },
+  {
+    key: "assets", label: "자산 현황", icon: Table2, desc: "전체 자산 원장",
+    sheetUrl: "https://docs.google.com/spreadsheets/d/1Kf37a1nNm0vEwxd3DtQ7G18cNofJz0FDLsVy549_HXY/edit",
+  },
+  {
+    key: "loans", label: "대여 현황", icon: Repeat, desc: "노트북·일반자산 대여",
+    sheetUrl: "https://docs.google.com/spreadsheets/d/1Ew-paU_bEjmbE8wyKy-9PIpvOH4KMpVKGLnuvnlfYcI/edit",
+  },
+  {
+    key: "materials", label: "재료 현황", icon: FlaskConical, desc: "연구재료/소모품 재고",
+    sheetUrl: "https://docs.google.com/spreadsheets/d/1OPtbs8Af_YyhkExNKiTWz5dLzxggrnK42UCws032emU/edit",
+  },
 ] as const;
 
 // 구글시트 연동 안내 — API/서비스계정 없이 IMPORTDATA 로 자동 반영.
@@ -42,11 +52,27 @@ export function GoogleSheetsCard() {
         </div>
       </div>
 
-      <ol className="mb-4 space-y-1.5 rounded-2xl bg-accent/60 p-4 text-sm">
-        <li>1. 구글 드라이브에서 새 구글시트를 3개 만듭니다 (자산/대여/재료).</li>
-        <li>2. 각 시트의 <b>A1 셀</b>에 아래 수식을 붙여넣습니다.</li>
-        <li>3. 구글시트가 이 주소의 CSV 를 <b>주기적으로 자동 새로고침</b>(약 1시간, 열 때마다)해 최신 현황을 반영합니다.</li>
-      </ol>
+      {/* 연결된 구글시트 바로가기 */}
+      <div className="mb-4 rounded-2xl bg-accent/60 p-4">
+        <p className="mb-2.5 text-sm font-bold">📎 연결된 구글시트 (클릭해서 열기)</p>
+        <div className="flex flex-wrap gap-2">
+          {SHEETS.map((s) => (
+            <a
+              key={s.key}
+              href={s.sheetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ceramic-btn grain inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-ceramic-ink transition hover:-translate-y-0.5"
+            >
+              <Sheet className="h-3.5 w-3.5 text-ceramic-mintDark" /> {s.label} <ExternalLink className="h-3 w-3 opacity-50" />
+            </a>
+          ))}
+        </div>
+        <p className="mt-2.5 text-xs text-muted-foreground">
+          각 시트 A1 의 IMPORTDATA 수식이 아래 CSV 주소를 주기적으로 자동 새로고침해 최신 현황을 반영합니다.
+          수식 URL 은 <b>배포 주소 기준</b>이어야 합니다 (아래에서 복사).
+        </p>
+      </div>
 
       <div className="space-y-2.5">
         {SHEETS.map((s) => {

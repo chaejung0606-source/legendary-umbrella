@@ -6,13 +6,6 @@ import { SoftCard } from "@/components/soft/SoftCard";
 import { SoftButton } from "@/components/soft/SoftButton";
 import { loginAction } from "@/app/auth-actions";
 
-// 데모 계정 힌트 (DB 미연동 인메모리)
-const DEMO = [
-  { role: "관리자", email: "admin@sadan.local", pw: "admin1234" },
-  { role: "자산담당자", email: "manager@sadan.local", pw: "manager1234" },
-  { role: "감사/조회", email: "auditor@sadan.local", pw: "auditor1234" },
-];
-
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -33,8 +26,6 @@ export function LoginForm({ next }: { next?: string }) {
       }
     });
   }
-
-  const fillDemo = (d: (typeof DEMO)[number]) => { setEmail(d.email); setPassword(d.pw); setError(null); };
 
   return (
     <div className="ceramic-page flex min-h-screen items-center justify-center px-4 py-10 text-ceramic-ink">
@@ -93,25 +84,9 @@ export function LoginForm({ next }: { next?: string }) {
             </SoftButton>
           </form>
 
-          {/* 데모 계정 힌트 */}
-          <div className="mt-6 border-t border-ceramic-line pt-4">
-            <p className="mb-2 text-xs font-semibold text-ceramic-sub">데모 계정 (클릭 시 자동 입력)</p>
-            <div className="flex flex-col gap-1.5">
-              {DEMO.map((d) => (
-                <button
-                  key={d.email} type="button" onClick={() => fillDemo(d)}
-                  className="ceramic-inset flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition hover:brightness-[0.98]"
-                >
-                  <span className="font-semibold text-ceramic-ink">{d.role}</span>
-                  <span className="font-mono text-ceramic-sub">{d.email} · {d.pw}</span>
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-ceramic-sub">
-              로그인하면 관리자가 계정에 부여한 <b>메뉴별 권한</b>에 따라 접근 가능한 메뉴만 표시됩니다.
-              (권한은 설정 → 계정/권한에서 관리, 변경 사항은 다음 로그인부터 적용)
-            </p>
-          </div>
+          <p className="mt-5 border-t border-ceramic-line pt-4 text-center text-[11px] leading-relaxed text-ceramic-sub">
+            계정이 없거나 비밀번호를 잊으셨다면 관리자에게 문의하세요.
+          </p>
         </SoftCard>
       </div>
     </div>

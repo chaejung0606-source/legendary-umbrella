@@ -147,3 +147,10 @@ model Seat {
   assets       Json // SeatAsset[]
   @@schema("sadan")
 }
+
+// ─── 시드 메타 (버전드 리시드 제어) ───
+model SeedMeta {
+  key   String @id
+  value String
+  @@schema("sadan")
+}
