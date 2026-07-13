@@ -76,17 +76,27 @@ export interface Asset {
   deletedAt?: string | null;
 }
 
-// ─── 대여 (노트북 포함 전체 자산) ───
+// ─── 대여 (노트북 포함 전체 자산) — 자산 대여 관리 대장 항목 반영 ───
 export interface LaptopLoan {
   id: string;
   assetId: string;
   managementNo: string;
   itemName: string;
   status: LoanStatus;
-  userName?: string | null;
-  loanedAt?: string | null;
-  dueAt?: string | null;
-  returnedAt?: string | null;
+  // 대여 정보
+  userName?: string | null; // 대여자
+  userAffiliation?: string | null; // 소속(사번/학번)
+  userPhone?: string | null; // 전화번호
+  reason?: string | null; // 사유
+  loanManager?: string | null; // 관리자
+  loanedAt?: string | null; // 대여일자
+  dueAt?: string | null; // 반납 예정일
+  // 반납 정보
+  returnedAt?: string | null; // 반납일자
+  returnerName?: string | null; // 반납자
+  returnerAffiliation?: string | null;
+  returnerPhone?: string | null;
+  returnManager?: string | null;
   note?: string | null;
   isNotebook?: boolean; // 노트북 대여현황 메뉴 필터용
 }

@@ -95,19 +95,27 @@ model Asset {
   @@schema("sadan")
 }
 
-// ─── 대여 (노트북 포함 전체 자산) ───
+// ─── 대여 (노트북 포함 전체 자산) — 자산 대여 관리 대장 항목 ───
 model LaptopLoan {
-  id           String  @id
-  assetId      String  @unique
-  managementNo String
-  itemName     String
-  status       String  @default("보관")
-  userName     String?
-  loanedAt     String?
-  dueAt        String?
-  returnedAt   String?
-  note         String?
-  isNotebook   Boolean @default(false)
+  id                  String  @id
+  assetId             String  @unique
+  managementNo        String
+  itemName            String
+  status              String  @default("보관")
+  userName            String? // 대여자
+  userAffiliation     String? // 소속(사번/학번)
+  userPhone           String? // 전화번호
+  reason              String? // 사유
+  loanManager         String? // 관리자
+  loanedAt            String? // 대여일자
+  dueAt               String? // 반납 예정일
+  returnedAt          String? // 반납일자
+  returnerName        String? // 반납자
+  returnerAffiliation String?
+  returnerPhone       String?
+  returnManager       String?
+  note                String?
+  isNotebook          Boolean @default(false)
 
   @@index([status])
   @@schema("sadan")

@@ -1,14 +1,14 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import type { LoanStatus } from "@/types";
 import {
   createAsset, updateAsset, moveAsset, loanAsset, returnAsset, consumableTxn, commitImport,
   addMajorCategory, updateMajorCategory, deleteMajorCategory,
   addMiddleCategory, updateMiddleCategory, deleteMiddleCategory,
   addBuilding, updateBuilding, deleteBuilding,
   createAccount, updateAccount, deleteAccount,
-  type AssetInput, type ImportCommitPayload, type AccountInput,
+  type AssetInput, type ImportCommitPayload, type AccountInput, type LoanInput, type ReturnInput,
 } from "@/data/mutations";
+import { filterAssets, getLaptopLoans } from "@/data";
 
 // DB(Postgres)를 변경하는 서버 액션.
 // 성공 시 전체 경로를 재검증해 대시보드 지표까지 즉시 반영한다.
@@ -49,27 +49,42 @@ export async function moveAssetAction(
   return { ok: true };
 }
 
-export async function loanAssetAction(
-  assetId: string,
-  userName: string,
-  dueAt: string | null
-): Promise<ActionResult> {
-  if (!userName?.trim()) return { ok: false, error: "사용자 이름을 입력해주세요." };
-  const loan = await loanAsset(assetId, userName.trim(), dueAt);
+export async function loanAssetAction(assetId: string, input: LoanInput): Promise<ActionResult> {
+  if (!input.userName?.trim()) return { ok: false, error: "대여자 이름을 입력해주세요." };
+  if (!input.dueAt) return { ok: false, error: "반납 예정일을 입력해주세요." };
+  const loan = await loanAsset(assetId, { ...input, userName: input.userName.trim() });
   if (!loan) return { ok: false, error: "자산을 찾을 수 없습니다." };
   refreshAll();
   return { ok: true };
 }
 
-export async function returnAssetAction(
-  assetId: string,
-  afterStatus: LoanStatus,
-  damaged: boolean
-): Promise<ActionResult> {
-  const loan = await returnAsset(assetId, afterStatus, damaged);
+export async function returnAssetAction(assetId: string, input: ReturnInput): Promise<ActionResult> {
+  if (!input.returnerName?.trim()) return { ok: false, error: "반납자 이름을 입력해주세요." };
+  const loan = await returnAsset(assetId, { ...input, returnerName: input.returnerName.trim() });
   if (!loan) return { ok: false, error: "자산을 찾을 수 없습니다." };
   refreshAll();
   return { ok: true };
+}
+
+// 대여 가능 자산 검색 (대여신청서의 자산 선택용)
+export interface LoanableAsset {
+  id: string;
+  itemName: string;
+  managementNo: string;
+  place: string;
+}
+export async function searchLoanableAssetsAction(q: string): Promise<LoanableAsset[]> {
+  if (!q.trim()) return [];
+  const [res, loans] = await Promise.all([filterAssets({ q: q.trim(), pageSize: 8 }), getLaptopLoans()]);
+  const outIds = new Set(loans.filter((l) => l.status === "대여중" || l.status === "직원사용").map((l) => l.assetId));
+  return res.rows
+    .filter((a) => !outIds.has(a.id) && a.assetStatus !== "대여중")
+    .map((a) => ({
+      id: a.id,
+      itemName: a.itemName,
+      managementNo: a.lockedManagementNo ?? a.generatedManagementNo ?? "-",
+      place: [a.place, a.roomName].filter(Boolean).join(" "),
+    }));
 }
 
 export async function consumableTxnAction(

@@ -42,7 +42,13 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <p className="mt-1 text-sm text-muted-foreground">{asset.specification}</p>
             <p className="mt-2 font-mono text-sm font-medium text-foreground/80">{asset.lockedManagementNo}</p>
           </div>
-          <AssetActions assetId={asset.id} itemName={asset.itemName} onLoan={onLoan} />
+          <AssetActions
+            assetId={asset.id}
+            itemName={asset.itemName}
+            managementNo={asset.lockedManagementNo ?? asset.generatedManagementNo ?? "-"}
+            currentUserName={asset.currentUserName}
+            onLoan={onLoan}
+          />
         </div>
 
         {isMismatch(asset) && (

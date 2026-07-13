@@ -1,19 +1,15 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search, ArrowUpRight, RotateCcw, Eye, AlertTriangle, Loader2, Laptop, Boxes } from "lucide-react";
-import type { LaptopLoan, LoanStatus } from "@/types";
+import { Search, ArrowUpRight, RotateCcw, Eye, AlertTriangle, Laptop, Boxes, FilePlus2 } from "lucide-react";
+import type { LaptopLoan } from "@/types";
 import { formatDate } from "@/lib/format";
 import { TODAY } from "@/data/pools";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, NativeSelect } from "@/components/ui/form-controls";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { LoanStatusBadge, StatusBadge } from "@/components/badges/status-badge";
 import { SoftCard, SoftCardHeader } from "@/components/cards/soft-card";
-import { useToast } from "@/components/ui/toaster";
-import { loanAssetAction, returnAssetAction } from "@/app/actions";
+import { LoanApplicationDialog, ReturnApplicationDialog, type LoanTargetAsset, type ReturnTargetLoan } from "./loan-forms";
 
 export interface LoanCandidate {
   id: string;
@@ -28,7 +24,7 @@ function dueSoon(dueAt?: string | null) {
   return (new Date(dueAt).getTime() - new Date(TODAY).getTime()) / 86400000 <= 3;
 }
 
-// 전체 자산 대여/반납 처리 화면: 대여 중 목록(반납) + 자산 검색(신규 대여) + 반납 이력.
+// 전체 자산 대여/반납: 독립 대여·반납 신청 버튼 + 대여 중 목록 + 검색 + 반납 이력.
 export function LoanManager({
   out,
   returned,
@@ -40,31 +36,36 @@ export function LoanManager({
   candidates: LoanCandidate[];
   q: string;
 }) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [loanTarget, setLoanTarget] = useState<LoanCandidate | null>(null);
-  const [returnTarget, setReturnTarget] = useState<LaptopLoan | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [loanOpen, setLoanOpen] = useState(false);
+  const [loanTarget, setLoanTarget] = useState<LoanTargetAsset | null>(null);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnTarget, setReturnTarget] = useState<ReturnTargetLoan | null>(null);
 
-  function run(action: () => Promise<{ ok: boolean; error?: string }>, successTitle: string) {
-    startTransition(async () => {
-      const result = await action();
-      if (result.ok) {
-        toast({ kind: "success", title: successTitle, description: "변경 사항이 저장되었습니다." });
-        setLoanTarget(null);
-        setReturnTarget(null);
-        router.refresh();
-      } else {
-        toast({ kind: "error", title: "처리 실패", description: result.error });
-      }
-    });
-  }
+  const outTargets: ReturnTargetLoan[] = out.map((l) => ({
+    assetId: l.assetId, itemName: l.itemName, managementNo: l.managementNo, userName: l.userName,
+  }));
 
   return (
     <div className="space-y-5">
-      {/* ── 신규 대여: 자산 검색 ── */}
+      {/* ── 독립 대여/반납 신청 버튼 ── */}
+      <SoftCard className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h3 className="flex items-center gap-2 text-base font-bold"><FilePlus2 className="h-5 w-5 text-brand-700" /> 대여 · 반납 신청</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">자산 대여 관리 대장 양식으로 신청서를 작성해 처리합니다.</p>
+        </div>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button className="flex-1 sm:flex-none" onClick={() => { setLoanTarget(null); setLoanOpen(true); }}>
+            <ArrowUpRight className="h-4 w-4" /> 대여 신청
+          </Button>
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setReturnTarget(null); setReturnOpen(true); }}>
+            <RotateCcw className="h-4 w-4" /> 반납 처리
+          </Button>
+        </div>
+      </SoftCard>
+
+      {/* ── 자산 검색으로 바로 대여 ── */}
       <SoftCard>
-        <SoftCardHeader title="신규 대여" description="자산을 검색해 바로 대여 처리합니다. (대여 중이 아닌 자산만 표시)" />
+        <SoftCardHeader title="자산 검색" description="자산을 찾아 바로 대여 신청서를 작성합니다. (대여 중 자산 제외)" />
         <form method="get" className="flex gap-2">
           <div className="relative flex-1 max-w-md">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -91,7 +92,9 @@ export function LoanManager({
                       <div className="font-mono text-xs text-muted-foreground">{c.managementNo}{c.place && ` · ${c.place}`}</div>
                     </div>
                     <div className="flex gap-1.5">
-                      <Button size="sm" onClick={() => setLoanTarget(c)}><ArrowUpRight className="h-3.5 w-3.5" /> 대여</Button>
+                      <Button size="sm" onClick={() => { setLoanTarget({ id: c.id, itemName: c.itemName, managementNo: c.managementNo }); setLoanOpen(true); }}>
+                        <ArrowUpRight className="h-3.5 w-3.5" /> 대여
+                      </Button>
                       <Button asChild size="sm" variant="ghost"><Link href={`/assets/${c.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                     </div>
                   </li>
@@ -116,8 +119,8 @@ export function LoanManager({
                   <th className="px-4 py-3 font-medium">관리번호</th>
                   <th className="px-4 py-3 font-medium">품명</th>
                   <th className="px-4 py-3 font-medium">구분</th>
-                  <th className="px-4 py-3 font-medium">상태</th>
-                  <th className="px-4 py-3 font-medium">사용자</th>
+                  <th className="px-4 py-3 font-medium">대여자</th>
+                  <th className="px-4 py-3 font-medium">사유</th>
                   <th className="px-4 py-3 font-medium">대여일</th>
                   <th className="px-4 py-3 font-medium">반납 예정</th>
                   <th className="px-4 py-3 text-right font-medium">처리</th>
@@ -139,8 +142,13 @@ export function LoanManager({
                           {l.isNotebook ? "노트북" : "일반자산"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5"><LoanStatusBadge status={l.status} /></td>
-                      <td className="px-4 py-3.5">{l.userName ?? "-"}</td>
+                      <td className="px-4 py-3.5">
+                        <span className="font-medium">{l.userName ?? "-"}</span>
+                        {(l.userAffiliation || l.userPhone) && (
+                          <span className="block text-[11px] text-muted-foreground">{[l.userAffiliation, l.userPhone].filter(Boolean).join(" · ")}</span>
+                        )}
+                      </td>
+                      <td className="max-w-[160px] truncate px-4 py-3.5 text-xs text-muted-foreground">{l.reason ?? "-"}</td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">{formatDate(l.loanedAt)}</td>
                       <td className="px-4 py-3.5 text-xs">
                         {l.dueAt ? (
@@ -151,7 +159,9 @@ export function LoanManager({
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-end gap-1.5">
-                          <Button size="sm" variant="outline" onClick={() => setReturnTarget(l)}><RotateCcw className="h-3.5 w-3.5" /> 반납</Button>
+                          <Button size="sm" variant="outline" onClick={() => { setReturnTarget({ assetId: l.assetId, itemName: l.itemName, managementNo: l.managementNo, userName: l.userName }); setReturnOpen(true); }}>
+                            <RotateCcw className="h-3.5 w-3.5" /> 반납
+                          </Button>
                           <Button asChild size="sm" variant="ghost"><Link href={`/assets/${l.assetId}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                         </div>
                       </td>
@@ -171,91 +181,46 @@ export function LoanManager({
           <span className="text-xs text-muted-foreground">{returned.length}건</span>
         </div>
         <div className="overflow-hidden rounded-card bg-card shadow-soft ring-1 ring-black/[0.03]">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-black/[0.05] text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">관리번호</th>
-                <th className="px-4 py-3 font-medium">품명</th>
-                <th className="px-4 py-3 font-medium">반납일</th>
-                <th className="px-4 py-3 font-medium">현재 상태</th>
-                <th className="px-4 py-3 font-medium">비고</th>
-              </tr>
-            </thead>
-            <tbody>
-              {returned.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">반납 이력이 아직 없어요.</td></tr>
-              )}
-              {returned.map((l) => (
-                <tr key={l.id} className="border-b border-black/[0.04] last:border-0 hover:bg-accent/60">
-                  <td className="px-4 py-3 font-mono text-xs">{l.managementNo}</td>
-                  <td className="px-4 py-3 font-medium">{l.itemName}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(l.returnedAt)}</td>
-                  <td className="px-4 py-3"><LoanStatusBadge status={l.status} /></td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{l.note ?? "-"}</td>
+          <div className="overflow-x-auto pastel-scroll">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-black/[0.05] text-left text-xs text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">관리번호</th>
+                  <th className="px-4 py-3 font-medium">품명</th>
+                  <th className="px-4 py-3 font-medium">대여자</th>
+                  <th className="px-4 py-3 font-medium">반납자</th>
+                  <th className="px-4 py-3 font-medium">반납일</th>
+                  <th className="px-4 py-3 font-medium">현재 상태</th>
+                  <th className="px-4 py-3 font-medium">비고</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {returned.length === 0 && (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">반납 이력이 아직 없어요.</td></tr>
+                )}
+                {returned.map((l) => (
+                  <tr key={l.id} className="border-b border-black/[0.04] last:border-0 hover:bg-accent/60">
+                    <td className="px-4 py-3 font-mono text-xs">{l.managementNo}</td>
+                    <td className="px-4 py-3 font-medium">{l.itemName}</td>
+                    <td className="px-4 py-3 text-xs">{l.userName ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {l.returnerName ?? "-"}
+                      {l.returnManager && <span className="block text-[11px] text-muted-foreground">관리자 {l.returnManager}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(l.returnedAt)}</td>
+                    <td className="px-4 py-3"><LoanStatusBadge status={l.status} /></td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{l.note ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* ── 대여 다이얼로그 ── */}
-      <Dialog open={!!loanTarget} onOpenChange={(o) => !o && setLoanTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>대여 처리</DialogTitle>
-            <DialogDescription>{loanTarget?.itemName} ({loanTarget?.managementNo})</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              run(
-                () => loanAssetAction(loanTarget!.id, String(fd.get("userName") ?? ""), String(fd.get("dueAt") ?? "") || null),
-                "대여 처리 완료"
-              );
-            }}
-            className="space-y-3"
-          >
-            <Field label="사용자" required><Input name="userName" required placeholder="이름" /></Field>
-            <Field label="예정 반납일"><Input name="dueAt" type="date" /></Field>
-            <DialogFooter>
-              <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} 대여 처리</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── 반납 다이얼로그 ── */}
-      <Dialog open={!!returnTarget} onOpenChange={(o) => !o && setReturnTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>반납 처리</DialogTitle>
-            <DialogDescription>{returnTarget?.itemName} ({returnTarget?.managementNo})</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              run(
-                () => returnAssetAction(returnTarget!.assetId, String(fd.get("afterStatus") ?? "보관") as LoanStatus, fd.get("damaged") === "on"),
-                "반납 처리 완료"
-              );
-            }}
-            className="space-y-3"
-          >
-            <Field label="반납 후 상태">
-              <NativeSelect name="afterStatus" defaultValue="보관">
-                <option>보관</option><option>수리</option><option>분실</option><option>폐기</option>
-              </NativeSelect>
-            </Field>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="damaged" /> 손상 있음</label>
-            <DialogFooter>
-              <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} 반납 처리</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* 신청서 다이얼로그 */}
+      <LoanApplicationDialog open={loanOpen} onClose={() => { setLoanOpen(false); setLoanTarget(null); }} asset={loanTarget} />
+      <ReturnApplicationDialog open={returnOpen} onClose={() => { setReturnOpen(false); setReturnTarget(null); }} loan={returnTarget} outLoans={outTargets} />
     </div>
   );
 }

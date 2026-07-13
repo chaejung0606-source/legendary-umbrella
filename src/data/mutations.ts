@@ -156,23 +156,74 @@ async function ensureLoan(assetId: string): Promise<LaptopLoan | null> {
   return created as unknown as LaptopLoan;
 }
 
-export async function loanAsset(assetId: string, userName: string, dueAt: string | null): Promise<LaptopLoan | null> {
+// 대여신청서 입력 (자산 대여 관리 대장 항목)
+export interface LoanInput {
+  userName: string; // 대여자
+  userAffiliation?: string | null; // 소속(사번/학번)
+  userPhone?: string | null; // 전화번호
+  reason?: string | null; // 사유
+  loanManager?: string | null; // 관리자
+  loanedAt?: string | null; // 대여일자 (기본: 오늘)
+  dueAt: string; // 반납 예정일 (필수)
+}
+
+// 반납신청서 입력
+export interface ReturnInput {
+  returnerName: string; // 반납자
+  returnerAffiliation?: string | null;
+  returnerPhone?: string | null;
+  returnManager?: string | null;
+  returnedAt?: string | null; // 반납일자 (기본: 오늘)
+  afterStatus: LoanStatus; // 반납 후 상태
+  damaged: boolean;
+}
+
+export async function loanAsset(assetId: string, input: LoanInput): Promise<LaptopLoan | null> {
   const loan = await ensureLoan(assetId);
   if (!loan) return null;
   const [updated] = await prisma.$transaction([
-    prisma.laptopLoan.update({ where: { assetId }, data: { status: "대여중", userName, loanedAt: TODAY, dueAt, returnedAt: null } }),
-    prisma.asset.update({ where: { id: assetId }, data: { assetStatus: "대여중", currentUserName: userName, updatedAt: nowIso() } }),
+    prisma.laptopLoan.update({
+      where: { assetId },
+      data: {
+        status: "대여중",
+        userName: input.userName,
+        userAffiliation: input.userAffiliation || null,
+        userPhone: input.userPhone || null,
+        reason: input.reason || null,
+        loanManager: input.loanManager || null,
+        loanedAt: input.loanedAt || TODAY,
+        dueAt: input.dueAt,
+        returnedAt: null,
+        returnerName: null,
+        returnerAffiliation: null,
+        returnerPhone: null,
+        returnManager: null,
+      },
+    }),
+    prisma.asset.update({ where: { id: assetId }, data: { assetStatus: "대여중", currentUserName: input.userName, updatedAt: nowIso() } }),
   ]);
   return updated as unknown as LaptopLoan;
 }
 
-export async function returnAsset(assetId: string, afterStatus: LoanStatus, damaged: boolean): Promise<LaptopLoan | null> {
+export async function returnAsset(assetId: string, input: ReturnInput): Promise<LaptopLoan | null> {
   const loan = await ensureLoan(assetId);
   if (!loan) return null;
   const map: Partial<Record<LoanStatus, AssetStatus>> = { 보관: "보관중", 수리: "수리중", 분실: "분실", 폐기: "폐기예정" };
   const [updated] = await prisma.$transaction([
-    prisma.laptopLoan.update({ where: { assetId }, data: { status: afterStatus, userName: null, dueAt: null, returnedAt: TODAY, note: damaged ? "반납 시 손상 확인" : loan.note ?? null } }),
-    prisma.asset.update({ where: { id: assetId }, data: { assetStatus: map[afterStatus] ?? "보관중", currentUserName: null, updatedAt: nowIso() } }),
+    prisma.laptopLoan.update({
+      where: { assetId },
+      data: {
+        status: input.afterStatus,
+        dueAt: null,
+        returnedAt: input.returnedAt || TODAY,
+        returnerName: input.returnerName,
+        returnerAffiliation: input.returnerAffiliation || null,
+        returnerPhone: input.returnerPhone || null,
+        returnManager: input.returnManager || null,
+        note: input.damaged ? "반납 시 손상 확인" : loan.note ?? null,
+      },
+    }),
+    prisma.asset.update({ where: { id: assetId }, data: { assetStatus: map[input.afterStatus] ?? "보관중", currentUserName: null, updatedAt: nowIso() } }),
   ]);
   return updated as unknown as LaptopLoan;
 }
