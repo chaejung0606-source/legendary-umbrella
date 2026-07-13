@@ -10,7 +10,7 @@ export const MENU_PERMISSIONS: MenuPermission[] = [
   { key: "assets", label: "자산 원장", href: "/assets" },
   { key: "assets.create", label: "자산 등록", href: "/assets/new" },
   { key: "imports", label: "엑셀 가져오기", href: "/imports" },
-  { key: "loans", label: "대여 관리", href: "/laptop-loans" },
+  { key: "loans", label: "대여 관리", href: "/loans" },
   { key: "consumables", label: "연구재료/소모품", href: "/consumables" },
   { key: "rfid", label: "RFID/태그 관리", href: "/rfid" },
   { key: "seats", label: "좌석/배치 현황", href: "/seats" },

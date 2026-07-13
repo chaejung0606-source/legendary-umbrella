@@ -43,6 +43,7 @@ export function menuKeyForPath(pathname: string): string | null {
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/imports")) return "imports";
   if (pathname.startsWith("/laptop-loans")) return "loans";
+  if (pathname.startsWith("/loans")) return "loans";
   if (pathname.startsWith("/consumables")) return "consumables";
   if (pathname.startsWith("/rfid")) return "rfid";
   if (pathname.startsWith("/seats")) return "seats";
