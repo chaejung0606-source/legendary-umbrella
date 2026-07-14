@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import seedData from "./seed-data.json";
+import promoSeed from "./promo-seed.json";
 
 /**
  * 시드 정책 (버전드):
@@ -73,6 +74,40 @@ async function main() {
       },
     });
     console.log("  ✓ 기본 관리자 계정 생성 (accounts 비어 있었음)");
+  }
+
+  // 기존 계정에 신규 메뉴(promo) 권한 부여 — 감사자(auditor) 제외, 이미 있으면 무변경
+  const accounts = await prisma.account.findMany();
+  for (const acc of accounts) {
+    if (acc.role !== "auditor" && !acc.permissions.includes("promo")) {
+      await prisma.account.update({
+        where: { id: acc.id },
+        data: { permissions: [...acc.permissions, "promo"] },
+      });
+      console.log(`  ✓ 계정 ${acc.email} 에 홍보물품 메뉴 권한 추가`);
+    }
+  }
+
+  // 홍보물품: 테이블이 비어 있을 때만 엑셀 이관 데이터 삽입 (편집 데이터 보존)
+  if ((await prisma.promoItem.count()) === 0) {
+    const promo = promoSeed as unknown as { items: object[]; txns: object[] };
+    await prisma.promoItem.createMany({ data: promo.items as never });
+    await prisma.promoTxn.createMany({ data: promo.txns as never });
+    console.log(`  ✓ 홍보물품 이관: items ${promo.items.length} · txns ${promo.txns.length}`);
+  }
+
+  // 앱 설정 기본값: 없을 때만 생성 (사용자 편집값 보존)
+  const DEFAULT_SETTINGS: Record<string, string> = {
+    publicBaseUrl: "https://sadan-asset-platform.vercel.app",
+    // 2026-07-14 새로 만든 시트 — A1 수식이 배포 주소 기준 IMPORTDATA (로컬 주소 아님)
+    "sheet.assets.url": "https://docs.google.com/spreadsheets/d/1nzHpBsADzBQHzDgbAEScB2rAVBR54QKtSqvgpgKg2A4/edit",
+    "sheet.loans.url": "https://docs.google.com/spreadsheets/d/1p5ku6aSP7MNasBxUMRQOp0hhMVrtLLFhTN3frmHwW-w/edit",
+    "sheet.materials.url": "https://docs.google.com/spreadsheets/d/16DNlw4qGW4WcH7qSJx3t8-Z-mB-vFMdzDtMk9lrl-eM/edit",
+    "sheet.promo.url": "https://docs.google.com/spreadsheets/d/1XZK10Q4tUxZuP8tKHdZnMbRLpWPxBr1rRx0LjYZLN68/edit",
+  };
+  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+    const exists = await prisma.appSetting.findUnique({ where: { key } });
+    if (!exists) await prisma.appSetting.create({ data: { key, value } });
   }
 
   console.log("Seed done.");

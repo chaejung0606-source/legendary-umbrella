@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type {
   Asset, DashboardStats, MonthlyAcquisitionPoint, CategoryRatioPoint, LaptopLoan, ConsumableItem, Seat, SeatAsset,
-  Account, AssetMajorCategory, Building,
+  Account, AssetMajorCategory, Building, PromoItem, PromoTxn, PromoRequest, PromoItemWithStock,
 } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { TODAY } from "./pools";
@@ -198,6 +198,70 @@ export async function getAccounts(): Promise<Account[]> {
 }
 export async function getSeats(): Promise<Seat[]> {
   return (await loadData()).seats;
+}
+
+// ─── 앱 설정 (구글시트 URL 등) ───
+export const getAppSettings = cache(async (): Promise<Record<string, string>> => {
+  const rows = await prisma.appSetting.findMany();
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+});
+
+// ─── 홍보물품 ───
+const loadPromo = cache(async () => {
+  const [items, txns, requests] = await Promise.all([
+    prisma.promoItem.findMany({ orderBy: { code: "asc" } }),
+    prisma.promoTxn.findMany({ orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
+    prisma.promoRequest.findMany({ orderBy: { createdAt: "desc" } }),
+  ]);
+  return {
+    items: items as unknown as PromoItem[],
+    txns: txns as unknown as PromoTxn[],
+    requests: requests as unknown as PromoRequest[],
+  };
+});
+
+export function computePromoStock(item: PromoItem, txns: PromoTxn[], requests: PromoRequest[]): PromoItemWithStock {
+  // 재고 = 물품의 "모든" 수불 기록 direction*qty 합.
+  // 취소는 반대 방향 보정 기록으로 이미 반영되므로 취소됨 행도 합계에 포함해야 한다
+  // (제외하면 보정 기록과 이중 반영). status 는 화면 표시용. mutations.promoBalance 와 동일 규칙.
+  const mine = txns.filter((t) => t.itemId === item.id);
+  const totalIn = mine.filter((t) => t.direction > 0).reduce((s, t) => s + t.qty, 0);
+  const totalOut = mine.filter((t) => t.direction < 0).reduce((s, t) => s + t.qty, 0);
+  const currentQty = totalIn - totalOut;
+  const reservedQty = requests
+    .filter((r) => r.itemId === item.id && r.status === "승인")
+    .reduce((s, r) => s + r.qty, 0);
+  const availableQty = currentQty - reservedQty;
+  const stockState: PromoItemWithStock["stockState"] =
+    currentQty <= 0 ? "품절"
+    : item.safetyQty > 0 && currentQty <= item.safetyQty ? "재고 부족"
+    : item.safetyQty > 0 && currentQty <= Math.ceil(item.safetyQty * 1.2) ? "재고 주의"
+    : "정상";
+  // 최근 입/출고 표시는 취소되지 않은 실제 입출고 기준
+  const ins = mine.filter((t) => t.direction > 0 && t.status === "정상" && !t.type.includes("취소"));
+  const outs = mine.filter((t) => t.direction < 0 && t.status === "정상" && !t.type.includes("취소"));
+  return {
+    ...item, totalIn, totalOut, currentQty, reservedQty, availableQty, stockState,
+    lastInAt: ins.length ? ins[ins.length - 1].date : null,
+    lastOutAt: outs.length ? outs[outs.length - 1].date : null,
+  };
+}
+
+export async function getPromoItemsWithStock(): Promise<PromoItemWithStock[]> {
+  const { items, txns, requests } = await loadPromo();
+  return items.map((i) => computePromoStock(i, txns, requests));
+}
+export async function getPromoTxns(itemId?: string): Promise<PromoTxn[]> {
+  const { txns } = await loadPromo();
+  return itemId ? txns.filter((t) => t.itemId === itemId) : txns;
+}
+export async function getPromoRequests(): Promise<PromoRequest[]> {
+  return (await loadPromo()).requests;
+}
+export async function getPromoItemById(id: string): Promise<PromoItemWithStock | undefined> {
+  const { items, txns, requests } = await loadPromo();
+  const item = items.find((i) => i.id === id);
+  return item ? computePromoStock(item, txns, requests) : undefined;
 }
 
 export { TODAY };

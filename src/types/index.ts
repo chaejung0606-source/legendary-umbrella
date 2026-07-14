@@ -191,6 +191,89 @@ export interface ImportJob {
   errorRows: ImportError[];
 }
 
+// ─── 홍보물품 ───
+export const PROMO_IN_TYPES = ["최초입고", "추가입고", "반납", "회수", "조정증가", "기타입고"] as const;
+export const PROMO_OUT_TYPES = ["출고", "폐기", "분실", "조정감소"] as const;
+export const PROMO_OUT_PURPOSES = [
+  "행사 배부", "학생 배부", "교직원 배부", "기관 전달", "홍보 부스 운영", "경품/기념품", "대외협력 제공", "기타",
+] as const;
+export type PromoTxnType = (typeof PROMO_IN_TYPES)[number] | (typeof PROMO_OUT_TYPES)[number] | "출고취소" | "입고취소";
+
+export interface PromoItem {
+  id: string;
+  code: string; // 구분코드 (P, Q, R, U …)
+  name: string;
+  category?: string | null;
+  spec?: string | null;
+  unit: string;
+  location?: string | null;
+  manager?: string | null;
+  vendor?: string | null;
+  purchasedAt?: string | null;
+  totalAmount: number;
+  unitPrice: number;
+  safetyQty: number;
+  status: string; // 사용 | 사용중지
+  docNo?: string | null;
+  note?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromoTxn {
+  id: string;
+  itemId: string;
+  date: string;
+  type: string;
+  qty: number;
+  direction: number; // +1 | -1
+  balanceAfter: number;
+  purpose?: string | null;
+  eventName?: string | null;
+  takerName?: string | null;
+  receiverName?: string | null;
+  manager?: string | null;
+  docNo?: string | null;
+  unitPrice?: number | null;
+  amount?: number | null;
+  status: string; // 정상 | 취소됨
+  cancelOfId?: string | null;
+  cancelReason?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface PromoRequest {
+  id: string;
+  itemId: string;
+  qty: number;
+  outType: string;
+  purpose: string;
+  eventName?: string | null;
+  eventDate?: string | null;
+  requesterName: string;
+  requesterAffiliation?: string | null;
+  requesterPhone?: string | null;
+  status: string; // 신청|승인|반려|출고완료|취소
+  managerName?: string | null;
+  rejectReason?: string | null;
+  txnId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 재고 계산이 포함된 품목 뷰 */
+export interface PromoItemWithStock extends PromoItem {
+  totalIn: number;
+  totalOut: number;
+  currentQty: number; // 정상 수불의 direction*qty 합
+  reservedQty: number; // 승인됐지만 미출고 신청 수량
+  availableQty: number; // currentQty - reservedQty
+  stockState: "정상" | "재고 주의" | "재고 부족" | "품절";
+  lastInAt?: string | null;
+  lastOutAt?: string | null;
+}
+
 // ─── 감사 로그 ───
 export interface AuditLog {
   id: string;

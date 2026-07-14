@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Boxes, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/nav";
+import { VersionBadge } from "./version-badge";
 
 export function Sidebar({ onNavigate, showClose, allowedHrefs }: { onNavigate?: () => void; showClose?: boolean; allowedHrefs?: string[] }) {
   const pathname = usePathname();
@@ -54,7 +55,7 @@ export function Sidebar({ onNavigate, showClose, allowedHrefs }: { onNavigate?: 
         })}
       </nav>
 
-      <div className="px-5 py-4 text-[11px] text-muted-foreground/70">v0.1 · MVP 시안</div>
+      <VersionBadge />
     </div>
   );
 }

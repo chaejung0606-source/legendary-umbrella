@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Boxes, PlusCircle, Upload, Laptop, FlaskConical,
-  ScanLine, Armchair, BarChart3, Settings, ArrowLeftRight, type LucideIcon,
+  ScanLine, Armchair, BarChart3, Settings, ArrowLeftRight, Gift, type LucideIcon,
 } from "lucide-react";
 
 export interface NavItem {
@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/loans", label: "대여 관리", icon: ArrowLeftRight },
   { href: "/laptop-loans", label: "노트북 대여현황", icon: Laptop },
   { href: "/consumables", label: "연구재료/소모품", icon: FlaskConical },
+  { href: "/promo", label: "홍보물품 관리", icon: Gift },
   { href: "/rfid", label: "RFID/태그 관리", icon: ScanLine },
   { href: "/seats", label: "좌석/배치 현황", icon: Armchair },
   { href: "/reports", label: "통계/리포트", icon: BarChart3 },

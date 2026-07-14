@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
-import { filterAssets, getConsumables, getMonthlyAcquisition, getCategoryRatio, getDashboardStats, TODAY } from "@/data";
+import { filterAssets, getConsumables, getMonthlyAcquisition, getCategoryRatio, getDashboardStats, getPromoItemsWithStock, getPromoTxns, TODAY } from "@/data";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +85,40 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
       "대분류별"
     );
     return workbookResponse(wb, `자산리포트_${TODAY}.xlsx`);
+  }
+
+  if (kind === "promo") {
+    const rows = (await getPromoItemsWithStock()).map((i) => ({
+      구분코드: i.code, 물품명: i.name, 분류: i.category, 규격: i.spec, 단위: i.unit,
+      누적입고: i.totalIn, 누적출고: i.totalOut, 현재재고: i.currentQty, 예약수량: i.reservedQty, 가용재고: i.availableQty,
+      안전재고: i.safetyQty, 재고상태: i.stockState, 단가: i.unitPrice, 재고금액: i.currentQty * i.unitPrice,
+      구입일자: i.purchasedAt, 총구입금액: i.totalAmount, 보관장소: i.location, 담당자: i.manager,
+      구매처: i.vendor, 사용상태: i.status, 비고: i.note,
+    }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "홍보물품현황");
+    return workbookResponse(wb, `홍보물품현황_${TODAY}.xlsx`);
+  }
+
+  if (kind === "promo-ledger") {
+    const [items, txns] = await Promise.all([getPromoItemsWithStock(), getPromoTxns()]);
+    const byId = new Map(items.map((i) => [i.id, i]));
+    const rows = [...txns]
+      .sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date.localeCompare(b.date)))
+      .map((t) => {
+        const item = byId.get(t.itemId);
+        return {
+          일자: t.date, 구분코드: item?.code, 물품명: item?.name, 유형: t.type,
+          입고수량: t.direction > 0 ? t.qty : null, 출고수량: t.direction < 0 ? t.qty : null,
+          처리후재고: t.balanceAfter, 내용: t.purpose, 행사명: t.eventName,
+          반출자: t.takerName, 수령자: t.receiverName, 담당자: t.manager,
+          단가: t.unitPrice, 금액: t.amount, 상태: t.status, 취소사유: t.cancelReason,
+          기록자: t.createdBy, 기록일시: t.createdAt,
+        };
+      });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "수불관리대장");
+    return workbookResponse(wb, `홍보물품_수불관리대장_${TODAY}.xlsx`);
   }
 
   return NextResponse.json({ error: `지원하지 않는 내보내기 유형: ${kind}` }, { status: 400 });

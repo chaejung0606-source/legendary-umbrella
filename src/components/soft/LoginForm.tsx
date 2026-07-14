@@ -5,6 +5,7 @@ import { Boxes, Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
 import { SoftCard } from "@/components/soft/SoftCard";
 import { SoftButton } from "@/components/soft/SoftButton";
 import { loginAction } from "@/app/auth-actions";
+import { APP_VERSION, APP_VERSION_DATE } from "@/data/changelog";
 
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
@@ -86,6 +87,7 @@ export function LoginForm({ next }: { next?: string }) {
 
           <p className="mt-5 border-t border-ceramic-line pt-4 text-center text-[11px] leading-relaxed text-ceramic-sub">
             계정이 없거나 비밀번호를 잊으셨다면 관리자에게 문의하세요.
+            <span className="mt-1 block opacity-70">v{APP_VERSION} · {APP_VERSION_DATE}</span>
           </p>
         </SoftCard>
       </div>

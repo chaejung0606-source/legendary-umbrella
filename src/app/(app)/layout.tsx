@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { AppShell } from "@/components/layout/app-shell";
 import { ToastProvider } from "@/components/ui/toaster";
 import type { HeaderNotification } from "@/components/layout/top-header";
-import { getDashboardStats, getReturnDueLaptops, getConsumableStats } from "@/data";
+import { getDashboardStats, getReturnDueLaptops, getConsumableStats, getPromoItemsWithStock } from "@/data";
 import { getAccountById } from "@/data/mutations";
 import { verifySession, menuKeyForPath, SESSION_COOKIE } from "@/lib/session";
 import { NAV_ITEMS } from "@/lib/nav";
@@ -28,7 +28,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     return !key || perms.includes(key);
   }).map((item) => item.href);
 
-  const [stats, due, consumables] = await Promise.all([getDashboardStats(), getReturnDueLaptops(7), getConsumableStats()]);
+  const [stats, due, consumables, promoItems] = await Promise.all([
+    getDashboardStats(), getReturnDueLaptops(7), getConsumableStats(), getPromoItemsWithStock(),
+  ]);
+  const promoAlerts = promoItems.filter(
+    (i) => i.status === "사용" && i.stockState !== "정상" && (i.totalIn > 0 || i.safetyQty > 0)
+  ).length;
 
   const notifications: HeaderNotification[] = [
     ...(due.length > 0
@@ -39,6 +44,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       : []),
     ...(consumables.lowStock > 0
       ? [{ id: "low-stock", tone: "error" as const, title: `재고 부족 품목 ${consumables.lowStock}종`, description: "안전재고 미만입니다. 입고가 필요해요.", href: "/consumables" }]
+      : []),
+    ...(promoAlerts > 0
+      ? [{ id: "promo-stock", tone: "warning" as const, title: `홍보물품 재고 알림 ${promoAlerts}종`, description: "품절·안전재고 이하 품목이 있습니다.", href: "/promo" }]
       : []),
     ...(stats.rfidUnregistered > 0
       ? [{ id: "rfid", tone: "info" as const, title: `RFID 미등록 ${stats.rfidUnregistered}건`, description: "태그 등록이 필요한 자산이 있습니다.", href: "/rfid" }]

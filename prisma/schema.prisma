@@ -154,3 +154,85 @@ model SeedMeta {
   value String
   @@schema("sadan")
 }
+
+// ─── 앱 설정 (구글시트 URL·배포 주소 등 — 하드코딩 대신 DB에서 관리) ───
+model AppSetting {
+  key   String @id
+  value String
+  @@schema("sadan")
+}
+
+// ─── 홍보물품 기본정보 ───
+model PromoItem {
+  id          String  @id
+  code        String  @unique // 구분코드 (P, Q, R, U …)
+  name        String // 물품명
+  category    String? // 분류
+  spec        String? // 규격/옵션
+  unit        String  @default("개")
+  location    String? // 보관장소
+  manager     String? // 담당자
+  vendor      String? // 구매처
+  purchasedAt String? // 최초 구입/납품일
+  totalAmount Int     @default(0) // 구입금액(합계)
+  unitPrice   Int     @default(0)
+  safetyQty   Int     @default(0) // 안전재고
+  status      String  @default("사용") // 사용 | 사용중지
+  docNo       String? // 서류번호
+  note        String?
+  createdAt   String
+  updatedAt   String
+  @@schema("sadan")
+}
+
+// ─── 홍보물품 수불내역 (모든 재고 변동의 단일 원장 — 재고는 이 합으로 계산) ───
+model PromoTxn {
+  id           String  @id
+  itemId       String
+  date         String // 처리일자
+  type         String // 최초입고|추가입고|반납|회수|출고|폐기|분실|조정증가|조정감소|출고취소|입고취소
+  qty          Int // 항상 양수
+  direction    Int // +1 입고성 / -1 출고성
+  balanceAfter Int // 변동 후 재고 (기록 시점)
+  purpose      String? // 내용/사용 목적
+  eventName    String? // 행사명
+  takerName    String? // 반출자
+  receiverName String? // 수령 대상
+  manager      String? // 담당 관리자
+  docNo        String? // 서류번호
+  unitPrice    Int?
+  amount       Int?
+  status       String  @default("정상") // 정상 | 취소됨
+  cancelOfId   String? // 이 내역이 취소(보정)하는 원본 txn id
+  cancelReason String?
+  createdBy    String?
+  createdAt    String
+
+  @@index([itemId, date])
+  @@index([status])
+  @@schema("sadan")
+}
+
+// ─── 홍보물품 출고 신청 (승인 흐름) ───
+model PromoRequest {
+  id                   String  @id
+  itemId               String
+  qty                  Int
+  outType              String  @default("행사 배부") // 출고 유형
+  purpose              String
+  eventName            String?
+  eventDate            String?
+  requesterName        String
+  requesterAffiliation String?
+  requesterPhone       String?
+  status               String  @default("신청") // 신청|승인|반려|출고완료|취소
+  managerName          String? // 처리 관리자
+  rejectReason         String?
+  txnId                String? // 출고완료 시 연결된 수불내역
+  createdAt            String
+  updatedAt            String
+
+  @@index([status])
+  @@index([itemId])
+  @@schema("sadan")
+}

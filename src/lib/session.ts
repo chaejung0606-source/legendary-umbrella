@@ -44,6 +44,7 @@ export function menuKeyForPath(pathname: string): string | null {
   if (pathname.startsWith("/imports")) return "imports";
   if (pathname.startsWith("/laptop-loans")) return "loans";
   if (pathname.startsWith("/loans")) return "loans";
+  if (pathname.startsWith("/promo")) return "promo";
   if (pathname.startsWith("/consumables")) return "consumables";
   if (pathname.startsWith("/rfid")) return "rfid";
   if (pathname.startsWith("/seats")) return "seats";
@@ -53,7 +54,7 @@ export function menuKeyForPath(pathname: string): string | null {
 }
 
 // 권한 목록에서 접근 가능한 첫 메뉴의 경로 (로그인 후 진입점 / 접근 거부 시 이동)
-const PRIORITY = ["dashboard", "assets", "loans", "consumables", "rfid", "seats", "reports", "settings", "assets.create"];
+const PRIORITY = ["dashboard", "assets", "loans", "consumables", "promo", "rfid", "seats", "reports", "settings", "assets.create"];
 export function firstAllowedPath(perms: string[]): string {
   for (const key of PRIORITY) {
     if (perms.includes(key)) return MENU_PERMISSIONS.find((m) => m.key === key)!.href;

@@ -12,6 +12,7 @@ export const MENU_PERMISSIONS: MenuPermission[] = [
   { key: "imports", label: "엑셀 가져오기", href: "/imports" },
   { key: "loans", label: "대여 관리", href: "/loans" },
   { key: "consumables", label: "연구재료/소모품", href: "/consumables" },
+  { key: "promo", label: "홍보물품 관리", href: "/promo" },
   { key: "rfid", label: "RFID/태그 관리", href: "/rfid" },
   { key: "seats", label: "좌석/배치 현황", href: "/seats" },
   { key: "reports", label: "통계/리포트", href: "/reports" },
@@ -23,7 +24,7 @@ export const ALL_MENU_KEYS = MENU_PERMISSIONS.map((m) => m.key);
 // 역할 기본 권한 프리셋 (계정 생성 시 초기값으로 사용)
 export const ROLE_PRESETS: Record<string, string[]> = {
   admin: ALL_MENU_KEYS,
-  asset_manager: ["dashboard", "assets", "assets.create", "imports", "loans", "consumables", "rfid", "seats", "reports"],
-  user: ["dashboard", "assets", "loans", "consumables", "seats"],
+  asset_manager: ["dashboard", "assets", "assets.create", "imports", "loans", "consumables", "promo", "rfid", "seats", "reports"],
+  user: ["dashboard", "assets", "loans", "consumables", "promo", "seats"],
   auditor: ["dashboard", "assets", "reports", "rfid"],
 };

@@ -1,7 +1,7 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Loader2, Hash, Building2, FolderTree } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Hash, Building2, FolderTree, Search } from "lucide-react";
 import type { AssetMajorCategory, Building } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,32 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
   const [dlg, setDlg] = useState<Dlg>(null);
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<"category" | "building">("category");
+  const [q, setQ] = useState("");
+
+  // 코드 검색: 분류코드/이름/세부품목, 건축물코드/이름 모두에서 찾는다.
+  const query = q.trim().toLowerCase();
+  const filteredCategories = useMemo(() => {
+    if (!query) return categories;
+    return categories
+      .map((maj) => {
+        const majorHit = String(maj.code).includes(query) || maj.name.toLowerCase().includes(query);
+        const middles = maj.middles.filter(
+          (mid) =>
+            majorHit ||
+            String(mid.code).includes(query) ||
+            mid.name.toLowerCase().includes(query) ||
+            (mid.detailItems ?? []).some((d) => d.toLowerCase().includes(query))
+        );
+        return majorHit || middles.length ? { ...maj, middles } : null;
+      })
+      .filter((m): m is AssetMajorCategory => m !== null);
+  }, [categories, query]);
+  const filteredBuildings = useMemo(() => {
+    if (!query) return buildings;
+    return buildings.filter(
+      (b) => b.code.toLowerCase().includes(query) || b.name.toLowerCase().includes(query) || b.campus.toLowerCase().includes(query)
+    );
+  }, [buildings, query]);
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, successTitle: string) {
     startTransition(async () => {
@@ -58,21 +84,34 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
         </p>
       </div>
 
-      {/* 탭 */}
-      <div className="flex gap-1.5">
+      {/* 탭 + 코드 검색 */}
+      <div className="flex flex-wrap items-center gap-1.5">
         <button onClick={() => setTab("category")} className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === "category" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}><FolderTree className="h-4 w-4" /> 자산분류 코드</button>
         <button onClick={() => setTab("building")} className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === "building" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}><Building2 className="h-4 w-4" /> 건축물 코드</button>
+        <div className="relative ml-auto min-w-52 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="코드·이름·세부품목 검색" className="h-10 pl-10" />
+        </div>
       </div>
+      {query && (
+        <p className="px-1 text-xs text-muted-foreground">
+          &lsquo;{q.trim()}&rsquo; 검색 결과 — 분류 {filteredCategories.reduce((s, m) => s + m.middles.length, 0)}건 · 건축물 {filteredBuildings.length}건
+        </p>
+      )}
 
       {tab === "category" ? (
         <div className="space-y-3">
           <div className="flex justify-end"><Button size="sm" variant="soft" onClick={() => setDlg({ t: "major-add" })}><Plus className="h-4 w-4" /> 대분류 추가</Button></div>
-          {categories.map((maj) => (
+          {filteredCategories.length === 0 && (
+            <p className="rounded-2xl bg-muted/60 px-4 py-6 text-center text-sm text-muted-foreground">검색 결과가 없어요.</p>
+          )}
+          {filteredCategories.map((maj) => (
             <div key={maj.id} className="rounded-2xl bg-muted/40 p-3.5">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold">
                   <span className="rounded-lg bg-pastel-lavender px-2 py-0.5 font-mono text-xs text-pastel-lavenderInk">{maj.code}</span>
                   {maj.name}
+                  <span className="text-xs font-normal text-muted-foreground">중분류 {maj.middles.length}</span>
                 </div>
                 <div className="flex gap-1">
                   <Button size="sm" variant="ghost" onClick={() => setDlg({ t: "middle-add", majorId: maj.id, majorName: maj.name })}><Plus className="h-3.5 w-3.5" /> 중분류</Button>
@@ -80,15 +119,24 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
                   <Button size="sm" variant="ghost" onClick={() => run(() => deleteMajorAction(maj.id), "대분류 삭제 완료")}><Trash2 className="h-3.5 w-3.5 text-pastel-coralInk" /></Button>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="space-y-1">
                 {maj.middles.length === 0 && <span className="text-xs text-muted-foreground">중분류 없음</span>}
                 {maj.middles.map((mid) => (
-                  <span key={mid.id} className="group inline-flex items-center gap-1.5 rounded-xl bg-card px-2.5 py-1.5 text-xs shadow-soft">
-                    <span className="font-mono font-semibold text-pastel-lavenderInk">{mid.code}</span>
-                    {mid.name}
-                    <button onClick={() => setDlg({ t: "middle-edit", id: mid.id, code: mid.code, name: mid.name, detail: (mid.detailItems ?? []).join(", ") })} className="opacity-40 transition hover:opacity-100"><Pencil className="h-3 w-3" /></button>
-                    <button onClick={() => run(() => deleteMiddleAction(mid.id), "중분류 삭제 완료")} className="opacity-40 transition hover:opacity-100"><Trash2 className="h-3 w-3 text-pastel-coralInk" /></button>
-                  </span>
+                  <div key={mid.id} className="group flex items-start gap-2.5 rounded-xl bg-card px-3 py-2 text-xs shadow-soft">
+                    <span className="mt-0.5 shrink-0 font-mono font-semibold text-pastel-lavenderInk">{mid.code}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold">{mid.name}</span>
+                      {(mid.detailItems ?? []).length > 0 && (
+                        <span className="mt-0.5 block leading-relaxed text-muted-foreground">
+                          세부품목: {(mid.detailItems ?? []).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button onClick={() => setDlg({ t: "middle-edit", id: mid.id, code: mid.code, name: mid.name, detail: (mid.detailItems ?? []).join(", ") })} className="opacity-40 transition hover:opacity-100" aria-label="중분류 수정"><Pencil className="h-3 w-3" /></button>
+                      <button onClick={() => run(() => deleteMiddleAction(mid.id), "중분류 삭제 완료")} className="opacity-40 transition hover:opacity-100" aria-label="중분류 삭제"><Trash2 className="h-3 w-3 text-pastel-coralInk" /></button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -108,7 +156,10 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
                 </tr>
               </thead>
               <tbody>
-                {buildings.map((b) => (
+                {filteredBuildings.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">검색 결과가 없어요.</td></tr>
+                )}
+                {filteredBuildings.map((b) => (
                   <tr key={b.id} className="border-b border-black/[0.04] last:border-0 hover:bg-accent/60">
                     <td className="px-4 py-2.5 font-mono text-xs text-pastel-mintInk">{b.code}</td>
                     <td className="px-4 py-2.5 font-medium">{b.name}</td>

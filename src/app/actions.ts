@@ -1,14 +1,32 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import {
   createAsset, updateAsset, moveAsset, loanAsset, returnAsset, consumableTxn, commitImport,
   addMajorCategory, updateMajorCategory, deleteMajorCategory,
   addMiddleCategory, updateMiddleCategory, deleteMiddleCategory,
   addBuilding, updateBuilding, deleteBuilding,
-  createAccount, updateAccount, deleteAccount,
+  createAccount, updateAccount, deleteAccount, updateAppSettings,
+  createPromoItem, updatePromoItem, setPromoItemStatus, promoTxn, cancelPromoTxn, adjustPromoStock,
+  createPromoRequest, decidePromoRequest, completePromoRequest,
   type AssetInput, type ImportCommitPayload, type AccountInput, type LoanInput, type ReturnInput,
+  type PromoItemInput, type PromoTxnInput, type PromoRequestInput,
 } from "@/data/mutations";
-import { filterAssets, getLaptopLoans } from "@/data";
+import { getLaptopLoans } from "@/data";
+import { prisma } from "@/lib/prisma";
+import { verifySession, SESSION_COOKIE, type SessionPayload } from "@/lib/session";
+
+// 현재 세션 (서버 액션 내 권한 재검증용)
+async function currentSession(): Promise<SessionPayload | null> {
+  const store = await cookies();
+  return verifySession(store.get(SESSION_COOKIE)?.value);
+}
+async function requireManager(): Promise<{ session: SessionPayload } | { error: string }> {
+  const session = await currentSession();
+  if (!session) return { error: "로그인이 필요합니다." };
+  if (!["admin", "asset_manager"].includes(session.role)) return { error: "관리자 권한이 필요합니다." };
+  return { session };
+}
 
 // DB(Postgres)를 변경하는 서버 액션.
 // 성공 시 전체 경로를 재검증해 대시보드 지표까지 즉시 반영한다.
@@ -67,6 +85,8 @@ export async function returnAssetAction(assetId: string, input: ReturnInput): Pr
 }
 
 // 대여 가능 자산 검색 (대여신청서의 자산 선택용)
+// 주의: 화면에 보이는 필드(품명·규격·관리번호)만 검색한다 — RFID 등 숨은 필드 매칭으로
+// "왜 나왔는지 알 수 없는" 결과가 나오지 않도록 함.
 export interface LoanableAsset {
   id: string;
   itemName: string;
@@ -74,14 +94,31 @@ export interface LoanableAsset {
   place: string;
 }
 export async function searchLoanableAssetsAction(q: string): Promise<LoanableAsset[]> {
-  if (!q.trim()) return [];
-  const [res, loans] = await Promise.all([filterAssets({ q: q.trim(), pageSize: 8 }), getLaptopLoans()]);
+  const query = q.trim();
+  if (!query) return [];
+  const [rows, loans] = await Promise.all([
+    prisma.asset.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { itemName: { contains: query } },
+          { specification: { contains: query } },
+          { lockedManagementNo: { contains: query } },
+          { generatedManagementNo: { contains: query } },
+        ],
+      },
+      orderBy: { legacyRowNo: "asc" },
+      take: 12,
+    }),
+    getLaptopLoans(),
+  ]);
   const outIds = new Set(loans.filter((l) => l.status === "대여중" || l.status === "직원사용").map((l) => l.assetId));
-  return res.rows
+  return rows
     .filter((a) => !outIds.has(a.id) && a.assetStatus !== "대여중")
+    .slice(0, 8)
     .map((a) => ({
       id: a.id,
-      itemName: a.itemName,
+      itemName: a.specification ? `${a.itemName} (${a.specification})` : a.itemName,
       managementNo: a.lockedManagementNo ?? a.generatedManagementNo ?? "-",
       place: [a.place, a.roomName].filter(Boolean).join(" "),
     }));
@@ -158,4 +195,69 @@ export async function updateAccountAction(id: string, input: AccountInput): Prom
 }
 export async function deleteAccountAction(id: string): Promise<ActionResult> {
   return wrap(await deleteAccount(id));
+}
+
+// ─── 앱 설정 (구글시트 URL 등) — 관리자 전용 ───
+export async function updateAppSettingsAction(entries: Record<string, string>): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  await updateAppSettings(entries);
+  refreshAll();
+  return { ok: true };
+}
+
+// ═══════════ 홍보물품 ═══════════
+export async function createPromoItemAction(input: PromoItemInput): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await createPromoItem(input));
+}
+export async function updatePromoItemAction(id: string, input: PromoItemInput): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await updatePromoItem(id, input));
+}
+export async function setPromoItemStatusAction(id: string, status: "사용" | "사용중지"): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await setPromoItemStatus(id, status));
+}
+export async function promoTxnAction(input: PromoTxnInput): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await promoTxn({ ...input, createdBy: auth.session.name }));
+}
+export async function cancelPromoTxnAction(txnId: string, reason: string): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await cancelPromoTxn(txnId, reason, auth.session.name));
+}
+export async function adjustPromoStockAction(itemId: string, actualQty: number, reason: string): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await adjustPromoStock(itemId, actualQty, reason, auth.session.name));
+}
+// 출고 신청은 로그인한 누구나 (신청자 정보는 폼 입력값 + 세션 기본값)
+export async function createPromoRequestAction(input: PromoRequestInput): Promise<ActionResult> {
+  const session = await currentSession();
+  if (!session) return { ok: false, error: "로그인이 필요합니다." };
+  return wrap(await createPromoRequest(input));
+}
+export async function decidePromoRequestAction(
+  id: string, decision: "승인" | "반려" | "취소", rejectReason?: string
+): Promise<ActionResult> {
+  // 본인 신청 취소는 일반 사용자도 가능, 승인/반려는 관리자만
+  if (decision === "취소") {
+    const session = await currentSession();
+    if (!session) return { ok: false, error: "로그인이 필요합니다." };
+    return wrap(await decidePromoRequest(id, decision, session.name));
+  }
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await decidePromoRequest(id, decision, auth.session.name, rejectReason));
+}
+export async function completePromoRequestAction(id: string): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await completePromoRequest(id, auth.session.name));
 }

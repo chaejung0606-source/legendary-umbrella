@@ -37,6 +37,7 @@ export const config = {
     "/imports/:path*",
     "/laptop-loans/:path*",
     "/loans/:path*",
+    "/promo/:path*",
     "/consumables/:path*",
     "/rfid/:path*",
     "/seats/:path*",

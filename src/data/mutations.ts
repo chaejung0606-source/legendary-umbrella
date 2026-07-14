@@ -419,3 +419,242 @@ export async function verifyLogin(email: string, password: string): Promise<Acco
 export async function getAccountById(id: string): Promise<Account | undefined> {
   return (await prisma.account.findUnique({ where: { id } })) ?? undefined;
 }
+
+// ─── 앱 설정 ───
+export async function updateAppSettings(entries: Record<string, string>): Promise<void> {
+  for (const [key, value] of Object.entries(entries)) {
+    await prisma.appSetting.upsert({ where: { key }, update: { value }, create: { key, value } });
+  }
+}
+
+// ═══════════════════════ 홍보물품 ═══════════════════════
+import type { PromoItem, PromoTxn, PromoRequest } from "@/types";
+
+// 정상 수불의 합으로 현재 재고 계산 (트랜잭션 내에서 재확인용)
+// 재고 = 모든 수불 기록의 direction*qty 합.
+// 취소는 반대 방향의 보정 기록으로 반영되므로 status(취소됨)는 표시용일 뿐 합계에서 제외하지 않는다
+// (제외하면 보정 기록과 이중 반영되어 재고가 틀어진다).
+async function promoBalance(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], itemId: string): Promise<number> {
+  const rows = await tx.promoTxn.findMany({ where: { itemId }, select: { qty: true, direction: true } });
+  return rows.reduce((s, r) => s + r.direction * r.qty, 0);
+}
+
+export interface PromoItemInput {
+  code: string; name: string; category?: string | null; spec?: string | null; unit?: string;
+  location?: string | null; manager?: string | null; vendor?: string | null; purchasedAt?: string | null;
+  unitPrice?: number; safetyQty?: number; docNo?: string | null; note?: string | null;
+}
+
+export async function createPromoItem(input: PromoItemInput): Promise<PromoItem | { error: string }> {
+  if (!input.code.trim()) return { error: "구분코드를 입력해주세요." };
+  if (!input.name.trim()) return { error: "물품명을 입력해주세요." };
+  if (await prisma.promoItem.findUnique({ where: { code: input.code.trim() } })) return { error: `이미 존재하는 구분코드입니다 (${input.code}).` };
+  const ts = nowIso();
+  return prisma.promoItem.create({
+    data: {
+      id: uid(), code: input.code.trim(), name: input.name.trim(),
+      category: input.category || null, spec: input.spec || null, unit: input.unit || "개",
+      location: input.location || null, manager: input.manager || null, vendor: input.vendor || null,
+      purchasedAt: input.purchasedAt || null, unitPrice: input.unitPrice ?? 0, safetyQty: input.safetyQty ?? 0,
+      docNo: input.docNo || null, note: input.note || null, totalAmount: 0, status: "사용", createdAt: ts, updatedAt: ts,
+    },
+  }) as unknown as PromoItem;
+}
+
+export async function updatePromoItem(id: string, input: PromoItemInput): Promise<PromoItem | { error: string }> {
+  const item = await prisma.promoItem.findUnique({ where: { id } });
+  if (!item) return { error: "물품을 찾을 수 없습니다." };
+  if (await prisma.promoItem.findFirst({ where: { code: input.code.trim(), id: { not: id } } })) return { error: `이미 존재하는 구분코드입니다 (${input.code}).` };
+  return prisma.promoItem.update({
+    where: { id },
+    data: {
+      code: input.code.trim(), name: input.name.trim(),
+      category: input.category || null, spec: input.spec || null, unit: input.unit || "개",
+      location: input.location || null, manager: input.manager || null, vendor: input.vendor || null,
+      purchasedAt: input.purchasedAt || null, unitPrice: input.unitPrice ?? 0, safetyQty: input.safetyQty ?? 0,
+      docNo: input.docNo || null, note: input.note || null, updatedAt: nowIso(),
+    },
+  }) as unknown as PromoItem;
+}
+
+export async function setPromoItemStatus(id: string, status: "사용" | "사용중지"): Promise<{ ok: true } | { error: string }> {
+  const item = await prisma.promoItem.findUnique({ where: { id } });
+  if (!item) return { error: "물품을 찾을 수 없습니다." };
+  if (status === "사용중지") {
+    const txnCount = await prisma.promoTxn.count({ where: { itemId: id } });
+    if (txnCount === 0) {
+      // 수불내역이 없으면 완전 삭제 허용
+      await prisma.promoItem.delete({ where: { id } });
+      return { ok: true };
+    }
+  }
+  await prisma.promoItem.update({ where: { id }, data: { status, updatedAt: nowIso() } });
+  return { ok: true };
+}
+
+export interface PromoTxnInput {
+  itemId: string;
+  date: string;
+  type: string; // PROMO_IN_TYPES | PROMO_OUT_TYPES
+  qty: number;
+  purpose?: string | null;
+  eventName?: string | null;
+  takerName?: string | null;
+  receiverName?: string | null;
+  manager?: string | null;
+  docNo?: string | null;
+  unitPrice?: number | null;
+  createdBy?: string | null;
+}
+
+const IN_TYPES = new Set(["최초입고", "추가입고", "반납", "회수", "조정증가", "기타입고", "출고취소"]);
+const OUT_TYPES = new Set(["출고", "폐기", "분실", "조정감소", "입고취소"]);
+
+/** 입고/출고/조정 공통 — 직렬화 트랜잭션으로 동시 출고 시 음수 재고 방지 */
+export async function promoTxn(input: PromoTxnInput): Promise<PromoTxn | { error: string }> {
+  if (!Number.isInteger(input.qty) || input.qty <= 0) return { error: "수량은 1 이상의 정수여야 합니다." };
+  if (!input.date) return { error: "처리일자를 입력해주세요." };
+  const direction = IN_TYPES.has(input.type) ? 1 : OUT_TYPES.has(input.type) ? -1 : 0;
+  if (direction === 0) return { error: `알 수 없는 수불 유형입니다 (${input.type}).` };
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const item = await tx.promoItem.findUnique({ where: { id: input.itemId } });
+      if (!item) throw new Error("물품을 찾을 수 없습니다.");
+      if (item.status === "사용중지" && direction < 0) throw new Error("사용 중지된 물품은 출고할 수 없습니다.");
+      const balance = await promoBalance(tx, input.itemId);
+      const after = balance + direction * input.qty;
+      if (after < 0) throw new Error(`출고수량이 현재 재고보다 많습니다. 현재 출고 가능한 수량은 ${balance}${item.unit}입니다.`);
+      const amount = input.unitPrice ? input.unitPrice * input.qty : null;
+      const created = await tx.promoTxn.create({
+        data: {
+          id: uid(), itemId: input.itemId, date: input.date, type: input.type, qty: input.qty, direction,
+          balanceAfter: after, purpose: input.purpose || null, eventName: input.eventName || null,
+          takerName: input.takerName || null, receiverName: input.receiverName || null,
+          manager: input.manager || null, docNo: input.docNo || null,
+          unitPrice: input.unitPrice ?? null, amount, status: "정상",
+          createdBy: input.createdBy || null, createdAt: nowIso(),
+        },
+      });
+      if (direction > 0 && amount) {
+        await tx.promoItem.update({ where: { id: item.id }, data: { totalAmount: item.totalAmount + amount, updatedAt: nowIso() } });
+      }
+      return created as unknown as PromoTxn;
+    }, { isolationLevel: "Serializable" });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "처리 중 오류가 발생했습니다." };
+  }
+}
+
+/** 수불내역 취소 — 삭제 대신 보정 내역을 추가하고 원본을 취소됨으로 표시 */
+export async function cancelPromoTxn(txnId: string, reason: string, by?: string | null): Promise<{ ok: true } | { error: string }> {
+  if (!reason.trim()) return { error: "취소 사유를 입력해주세요." };
+  try {
+    await prisma.$transaction(async (tx) => {
+      const orig = await tx.promoTxn.findUnique({ where: { id: txnId } });
+      if (!orig) throw new Error("수불내역을 찾을 수 없습니다.");
+      if (orig.status !== "정상") throw new Error("이미 취소된 내역입니다.");
+      if (orig.type === "출고취소" || orig.type === "입고취소") throw new Error("취소 내역은 다시 취소할 수 없습니다.");
+      const balance = await promoBalance(tx, orig.itemId);
+      const after = balance - orig.direction * orig.qty; // 원본 효과 제거
+      if (after < 0) throw new Error("취소 시 재고가 음수가 됩니다. 이후 출고 내역을 먼저 취소해주세요.");
+      await tx.promoTxn.update({ where: { id: txnId }, data: { status: "취소됨", cancelReason: reason.trim() } });
+      await tx.promoTxn.create({
+        data: {
+          id: uid(), itemId: orig.itemId, date: TODAY, type: orig.direction > 0 ? "입고취소" : "출고취소",
+          qty: orig.qty, direction: -orig.direction, balanceAfter: after,
+          purpose: `취소: ${orig.type} ${orig.qty}건 (${reason.trim()})`, cancelOfId: orig.id,
+          status: "정상", createdBy: by || null, createdAt: nowIso(),
+        },
+      });
+    }, { isolationLevel: "Serializable" });
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "취소 중 오류가 발생했습니다." };
+  }
+}
+
+/** 재고 실사 조정 — 실제 수량 입력 → 차이만큼 조정증가/감소 수불 기록 */
+export async function adjustPromoStock(
+  itemId: string, actualQty: number, reason: string, by?: string | null
+): Promise<{ ok: true; diff: number } | { error: string }> {
+  if (!Number.isInteger(actualQty) || actualQty < 0) return { error: "실제 재고는 0 이상의 정수여야 합니다." };
+  if (!reason.trim()) return { error: "조정 사유를 입력해주세요." };
+  const balance = await prisma.promoTxn
+    .findMany({ where: { itemId }, select: { qty: true, direction: true } })
+    .then((rows) => rows.reduce((s, r) => s + r.direction * r.qty, 0));
+  const diff = actualQty - balance;
+  if (diff === 0) return { error: "시스템 재고와 실제 재고가 같아 조정할 내용이 없습니다." };
+  const result = await promoTxn({
+    itemId, date: TODAY, type: diff > 0 ? "조정증가" : "조정감소", qty: Math.abs(diff),
+    purpose: `재고 실사 조정 (시스템 ${balance} → 실제 ${actualQty}) — ${reason.trim()}`, createdBy: by,
+  });
+  if ("error" in result) return result;
+  return { ok: true, diff };
+}
+
+// ─── 출고 신청 흐름 ───
+export interface PromoRequestInput {
+  itemId: string; qty: number; outType: string; purpose: string;
+  eventName?: string | null; eventDate?: string | null;
+  requesterName: string; requesterAffiliation?: string | null; requesterPhone?: string | null;
+}
+
+export async function createPromoRequest(input: PromoRequestInput): Promise<PromoRequest | { error: string }> {
+  if (!Number.isInteger(input.qty) || input.qty <= 0) return { error: "신청 수량은 1 이상의 정수여야 합니다." };
+  if (!input.requesterName.trim()) return { error: "신청자 이름을 입력해주세요." };
+  if (!input.purpose.trim()) return { error: "사용 목적을 입력해주세요." };
+  const item = await prisma.promoItem.findUnique({ where: { id: input.itemId } });
+  if (!item) return { error: "물품을 찾을 수 없습니다." };
+  if (item.status === "사용중지") return { error: "사용 중지된 물품은 신청할 수 없습니다." };
+  const ts = nowIso();
+  return prisma.promoRequest.create({
+    data: {
+      id: uid(), itemId: input.itemId, qty: input.qty, outType: input.outType || "행사 배부",
+      purpose: input.purpose.trim(), eventName: input.eventName || null, eventDate: input.eventDate || null,
+      requesterName: input.requesterName.trim(), requesterAffiliation: input.requesterAffiliation || null,
+      requesterPhone: input.requesterPhone || null, status: "신청", createdAt: ts, updatedAt: ts,
+    },
+  }) as unknown as PromoRequest;
+}
+
+export async function decidePromoRequest(
+  id: string, decision: "승인" | "반려" | "취소", managerName?: string | null, rejectReason?: string | null
+): Promise<{ ok: true } | { error: string }> {
+  const req = await prisma.promoRequest.findUnique({ where: { id } });
+  if (!req) return { error: "신청을 찾을 수 없습니다." };
+  if (decision === "승인") {
+    if (req.status !== "신청") return { error: `'신청' 상태에서만 승인할 수 있습니다 (현재: ${req.status}).` };
+    // 승인 = 사용 가능 수량 예약. 가용 수량 확인
+    const [balanceRows, approved] = await Promise.all([
+      prisma.promoTxn.findMany({ where: { itemId: req.itemId }, select: { qty: true, direction: true } }),
+      prisma.promoRequest.aggregate({ _sum: { qty: true }, where: { itemId: req.itemId, status: "승인" } }),
+    ]);
+    const balance = balanceRows.reduce((s, r) => s + r.direction * r.qty, 0);
+    const available = balance - (approved._sum.qty ?? 0);
+    if (req.qty > available) return { error: `사용 가능 수량(${available})을 초과합니다. (재고 ${balance}, 출고 예정 ${approved._sum.qty ?? 0})` };
+  }
+  if (decision === "반려" && !rejectReason?.trim()) return { error: "반려 사유를 입력해주세요." };
+  if (decision === "취소" && !["신청", "승인"].includes(req.status)) return { error: "신청/승인 상태에서만 취소할 수 있습니다." };
+  await prisma.promoRequest.update({
+    where: { id },
+    data: { status: decision, managerName: managerName || req.managerName, rejectReason: rejectReason?.trim() || null, updatedAt: nowIso() },
+  });
+  return { ok: true };
+}
+
+/** 승인된 신청을 실제 출고 처리(재고 차감 + 수불 기록 + 신청 연결) */
+export async function completePromoRequest(id: string, managerName?: string | null): Promise<{ ok: true } | { error: string }> {
+  const req = await prisma.promoRequest.findUnique({ where: { id } });
+  if (!req) return { error: "신청을 찾을 수 없습니다." };
+  if (req.status !== "승인") return { error: `승인된 신청만 출고 처리할 수 있습니다 (현재: ${req.status}).` };
+  const txn = await promoTxn({
+    itemId: req.itemId, date: TODAY, type: "출고", qty: req.qty,
+    purpose: `[${req.outType}] ${req.purpose}`, eventName: req.eventName,
+    takerName: req.requesterName, receiverName: req.requesterAffiliation, manager: managerName,
+    createdBy: managerName,
+  });
+  if ("error" in txn) return txn;
+  await prisma.promoRequest.update({ where: { id }, data: { status: "출고완료", txnId: txn.id, managerName: managerName || req.managerName, updatedAt: nowIso() } });
+  return { ok: true };
+}
