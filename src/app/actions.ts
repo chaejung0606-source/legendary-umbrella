@@ -178,6 +178,25 @@ export async function loanAssetAction(assetId: string, input: LoanInput): Promis
   return { ok: true };
 }
 
+// 복수 자산 대여 — 신청서 1장으로 선택한 자산 전부를 같은 조건으로 대여 처리
+export async function loanAssetsAction(assetIds: string[], input: LoanInput): Promise<ActionResult<{ count: number }>> {
+  if (!assetIds?.length) return { ok: false, error: "대여할 자산을 선택해주세요." };
+  if (!input.userName?.trim()) return { ok: false, error: "대여자 이름을 입력해주세요." };
+  if (!input.dueAt) return { ok: false, error: "반납 예정일을 입력해주세요." };
+  if (!input.signature) return { ok: false, error: "대여자 서명을 해주세요." };
+  const failed: string[] = [];
+  let count = 0;
+  for (const id of assetIds) {
+    const loan = await loanAsset(id, { ...input, userName: input.userName.trim() });
+    if (loan) count += 1;
+    else failed.push(id);
+  }
+  refreshAll();
+  if (count === 0) return { ok: false, error: "자산을 찾을 수 없어 대여 처리하지 못했습니다." };
+  if (failed.length) return { ok: true, count }; // 일부 실패해도 처리된 건수는 반영
+  return { ok: true, count };
+}
+
 export async function returnAssetAction(assetId: string, input: ReturnInput): Promise<ActionResult> {
   if (!input.returnerName?.trim()) return { ok: false, error: "반납자 이름을 입력해주세요." };
   const loan = await returnAsset(assetId, { ...input, returnerName: input.returnerName.trim() });

@@ -174,12 +174,14 @@ async function ensureLoan(assetId: string): Promise<LaptopLoan | null> {
 // 대여신청서 입력 (자산 대여 관리 대장 항목)
 export interface LoanInput {
   userName: string; // 대여자
-  userAffiliation?: string | null; // 소속(사번/학번)
+  userAffiliation?: string | null; // 소속
+  userIdNo?: string | null; // 사번/학번
   userPhone?: string | null; // 전화번호
   reason?: string | null; // 사유
-  loanManager?: string | null; // 관리자
+  loanManager?: string | null; // 대여 관리자
   loanedAt?: string | null; // 대여일자 (기본: 오늘)
   dueAt: string; // 반납 예정일 (필수)
+  signature?: string | null; // 대여자 서명 (PNG data URL)
 }
 
 // 반납신청서 입력
@@ -203,11 +205,13 @@ export async function loanAsset(assetId: string, input: LoanInput): Promise<Lapt
         status: "대여중",
         userName: input.userName,
         userAffiliation: input.userAffiliation || null,
+        userIdNo: input.userIdNo || null,
         userPhone: input.userPhone || null,
         reason: input.reason || null,
         loanManager: input.loanManager || null,
         loanedAt: input.loanedAt || TODAY,
         dueAt: input.dueAt,
+        signature: input.signature || null,
         returnedAt: null,
         returnerName: null,
         returnerAffiliation: null,

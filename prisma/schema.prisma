@@ -103,10 +103,12 @@ model LaptopLoan {
   itemName            String
   status              String  @default("보관")
   userName            String? // 대여자
-  userAffiliation     String? // 소속(사번/학번)
+  userAffiliation     String? // 소속
+  userIdNo            String? // 사번/학번
   userPhone           String? // 전화번호
   reason              String? // 사유
-  loanManager         String? // 관리자
+  loanManager         String? // 대여 관리자
+  signature           String? // 대여자 서명 (PNG data URL)
   loanedAt            String? // 대여일자
   dueAt               String? // 반납 예정일
   returnedAt          String? // 반납일자

@@ -58,12 +58,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     // 자산 대여 관리 대장 양식 항목 그대로 내보낸다.
     const headers = [
       "관리번호", "품명", "구분", "상태",
-      "대여일자", "사유", "대여자", "소속(사번/학번)", "전화번호", "관리자",
+      "대여일자", "사유", "대여자", "소속", "사번/학번", "전화번호", "대여 관리자",
       "반납예정", "반납일자", "반납자", "반납자 소속", "반납자 전화번호", "반납 관리자", "비고",
     ];
     const data = (await getLaptopLoans()).map((l) => [
       l.managementNo, l.itemName, l.isNotebook ? "노트북" : "일반자산", l.status,
-      l.loanedAt, l.reason, l.userName, l.userAffiliation, l.userPhone, l.loanManager,
+      l.loanedAt, l.reason, l.userName, l.userAffiliation, l.userIdNo, l.userPhone, l.loanManager,
       l.dueAt, l.returnedAt, l.returnerName, l.returnerAffiliation, l.returnerPhone, l.returnManager, l.note,
     ]);
     return csvResponse(toCsv(headers, data));

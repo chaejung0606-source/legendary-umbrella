@@ -85,10 +85,12 @@ export interface LaptopLoan {
   status: LoanStatus;
   // 대여 정보
   userName?: string | null; // 대여자
-  userAffiliation?: string | null; // 소속(사번/학번)
+  userAffiliation?: string | null; // 소속
+  userIdNo?: string | null; // 사번/학번
   userPhone?: string | null; // 전화번호
   reason?: string | null; // 사유
-  loanManager?: string | null; // 관리자
+  loanManager?: string | null; // 대여 관리자
+  signature?: string | null; // 대여자 서명 (PNG data URL)
   loanedAt?: string | null; // 대여일자
   dueAt?: string | null; // 반납 예정일
   // 반납 정보

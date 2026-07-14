@@ -144,8 +144,8 @@ export function LoanManager({
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="font-medium">{l.userName ?? "-"}</span>
-                        {(l.userAffiliation || l.userPhone) && (
-                          <span className="block text-[11px] text-muted-foreground">{[l.userAffiliation, l.userPhone].filter(Boolean).join(" · ")}</span>
+                        {(l.userAffiliation || l.userIdNo || l.userPhone) && (
+                          <span className="block text-[11px] text-muted-foreground">{[l.userAffiliation, l.userIdNo, l.userPhone].filter(Boolean).join(" · ")}</span>
                         )}
                       </td>
                       <td className="max-w-[160px] truncate px-4 py-3.5 text-xs text-muted-foreground">{l.reason ?? "-"}</td>
