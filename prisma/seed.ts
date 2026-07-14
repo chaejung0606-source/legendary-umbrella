@@ -97,17 +97,31 @@ async function main() {
   }
 
   // 앱 설정 기본값: 없을 때만 생성 (사용자 편집값 보존)
+  // 2026-07-14 A1에 "진짜" IMPORTDATA 수식이 들어간 시트 (XLSX 변환 방식).
+  // 이전 CSV 방식 시트들은 수식이 텍스트로 저장돼 동작하지 않았다.
   const DEFAULT_SETTINGS: Record<string, string> = {
     publicBaseUrl: "https://sadan-asset-platform.vercel.app",
-    // 2026-07-14 새로 만든 시트 — A1 수식이 배포 주소 기준 IMPORTDATA (로컬 주소 아님)
-    "sheet.assets.url": "https://docs.google.com/spreadsheets/d/1nzHpBsADzBQHzDgbAEScB2rAVBR54QKtSqvgpgKg2A4/edit",
-    "sheet.loans.url": "https://docs.google.com/spreadsheets/d/1p5ku6aSP7MNasBxUMRQOp0hhMVrtLLFhTN3frmHwW-w/edit",
-    "sheet.materials.url": "https://docs.google.com/spreadsheets/d/16DNlw4qGW4WcH7qSJx3t8-Z-mB-vFMdzDtMk9lrl-eM/edit",
-    "sheet.promo.url": "https://docs.google.com/spreadsheets/d/1XZK10Q4tUxZuP8tKHdZnMbRLpWPxBr1rRx0LjYZLN68/edit",
+    "sheet.assets.url": "https://docs.google.com/spreadsheets/d/1RRewYMdk9hH-nLcQJiMPYSVipvorYdE2zN1vtJ0u5sU/edit",
+    "sheet.loans.url": "https://docs.google.com/spreadsheets/d/1o1-BjamkIooxYl1pQ6gRmaIQWCtx_iW7GmhZyTMGYy0/edit",
+    "sheet.materials.url": "https://docs.google.com/spreadsheets/d/1ff3TMbTVxg8yrWxA2DMkpwcX17A1BMLGP6cuDy3fZFU/edit",
+    "sheet.promo.url": "https://docs.google.com/spreadsheets/d/11j9SpCxCkmdwKOTX0_QBdox6oF1gJbItdbNjoR48iBw/edit",
   };
+  // 예전 고장난 시트(수식이 텍스트) ID — 설정값이 이 시트를 가리키고 있으면 새 시트로 교체.
+  // 사용자가 직접 다른 URL 로 바꾼 경우에는 건드리지 않는다.
+  const STALE_SHEET_IDS = [
+    "1Kf37a1nNm0vEwxd3DtQ7G18cNofJz0FDLsVy549_HXY", "1Ew-paU_bEjmbE8wyKy-9PIpvOH4KMpVKGLnuvnlfYcI",
+    "1OPtbs8Af_YyhkExNKiTWz5dLzxggrnK42UCws032emU", "1nzHpBsADzBQHzDgbAEScB2rAVBR54QKtSqvgpgKg2A4",
+    "1p5ku6aSP7MNasBxUMRQOp0hhMVrtLLFhTN3frmHwW-w", "16DNlw4qGW4WcH7qSJx3t8-Z-mB-vFMdzDtMk9lrl-eM",
+    "1XZK10Q4tUxZuP8tKHdZnMbRLpWPxBr1rRx0LjYZLN68", "12bP8SzCxAvLQ5OXU_r7EWxw5CrWgNpeGnSMrI-2OKRE",
+  ];
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     const exists = await prisma.appSetting.findUnique({ where: { key } });
-    if (!exists) await prisma.appSetting.create({ data: { key, value } });
+    if (!exists) {
+      await prisma.appSetting.create({ data: { key, value } });
+    } else if (STALE_SHEET_IDS.some((id) => exists.value.includes(id)) && exists.value !== value) {
+      await prisma.appSetting.update({ where: { key }, data: { value } });
+      console.log(`  ✓ 앱 설정 ${key} 를 새 구글시트로 교체`);
+    }
   }
 
   console.log("Seed done.");
