@@ -19,7 +19,7 @@ const TXN_META: Record<TxnType, { title: string; qtyLabel: string; verb: string 
 };
 
 // 소모품 페이지 상단 액션: 입고/출고/재고 조정 다이얼로그 + 엑셀 다운로드.
-export function ConsumableActions({ items }: { items: Pick<ConsumableItem, "id" | "itemName" | "currentQty" | "unit">[] }) {
+export function ConsumableActions({ items, isManager = false }: { items: Pick<ConsumableItem, "id" | "itemName" | "currentQty" | "unit">[]; isManager?: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [type, setType] = useState<TxnType | null>(null);
@@ -75,10 +75,10 @@ export function ConsumableActions({ items }: { items: Pick<ConsumableItem, "id" 
 
   return (
     <>
-      <Button size="sm" onClick={() => setCreateOpen(true)}><PlusCircle className="h-4 w-4" /> 물품 등록</Button>
+      {isManager && <Button size="sm" onClick={() => setCreateOpen(true)}><PlusCircle className="h-4 w-4" /> 물품 등록</Button>}
       <Button variant="soft" size="sm" onClick={() => setType("in")}><ArrowDownToLine className="h-4 w-4" /> 입고</Button>
       <Button variant="soft" size="sm" onClick={() => setType("out")}><ArrowUpFromLine className="h-4 w-4" /> 출고</Button>
-      <Button variant="soft" size="sm" onClick={() => setType("adjust")}><SlidersHorizontal className="h-4 w-4" /> 재고 조정</Button>
+      {isManager && <Button variant="soft" size="sm" onClick={() => setType("adjust")}><SlidersHorizontal className="h-4 w-4" /> 재고 조정</Button>}
       <Button asChild variant="outline" size="sm">
         <a href="/api/export/consumables" download><Download className="h-4 w-4" /> 엑셀</a>
       </Button>

@@ -82,6 +82,7 @@ export function SignaturePad({ onChange, height = 120 }: { onChange: (dataUrl: s
       <div className="relative overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-black/[0.06]">
         <canvas
           ref={canvasRef}
+          data-testid="signature-pad"
           style={{ width: "100%", height, touchAction: "none" }}
           onPointerDown={start}
           onPointerMove={move}

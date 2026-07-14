@@ -679,10 +679,15 @@ export async function createPromoRequest(input: PromoRequestInput): Promise<Prom
 }
 
 export async function decidePromoRequest(
-  id: string, decision: "승인" | "반려" | "취소", managerName?: string | null, rejectReason?: string | null
+  id: string, decision: "승인" | "반려" | "취소", managerName?: string | null, rejectReason?: string | null,
+  // 지정 시 해당 이름의 신청만 취소 허용(비관리자 본인 확인용). undefined면 소유자 검증 생략(관리자).
+  ownerName?: string | null
 ): Promise<{ ok: true } | { error: string }> {
   const req = await prisma.promoRequest.findUnique({ where: { id } });
   if (!req) return { error: "신청을 찾을 수 없습니다." };
+  if (ownerName !== undefined && ownerName !== null && req.requesterName !== ownerName) {
+    return { error: "본인이 신청한 건만 취소할 수 있습니다." };
+  }
   if (decision === "승인") {
     if (req.status !== "신청") return { error: `'신청' 상태에서만 승인할 수 있습니다 (현재: ${req.status}).` };
     // 승인 = 사용 가능 수량 예약. 가용 수량 확인

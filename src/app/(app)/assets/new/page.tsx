@@ -1,11 +1,18 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { PlusCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { AssetForm } from "@/components/assets/asset-form";
 import { getCategories, getBuildings } from "@/data";
+import { verifySession, SESSION_COOKIE } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewAssetPage() {
+  // 자산 등록은 관리자 전용. 신청자는 자산 원장으로 돌려보낸다.
+  const store = await cookies();
+  const session = await verifySession(store.get(SESSION_COOKIE)?.value);
+  if (!session || !["admin", "asset_manager"].includes(session.role)) redirect("/assets");
   const [categories, buildings] = await Promise.all([getCategories(), getBuildings()]);
   return (
     <div className="max-w-5xl space-y-5">

@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { useToast } from "@/components/ui/toaster";
 import { bulkCreateAssetsAction, type BulkAssetRowInput } from "@/app/actions";
 
-/** 자산 원장 헤더의 등록 버튼 묶음: 단일 등록(폼) + 복수 등록(엑셀 양식 업로드) */
-export function AssetRegisterActions() {
+/** 자산 원장 헤더의 등록 버튼 묶음: 단일 등록(폼) + 복수 등록(엑셀 양식 업로드).
+ * 자산 등록은 관리자 기능 — 신청자(user)에게는 노출하지 않는다(서버에서도 재검증). */
+export function AssetRegisterActions({ isManager = false }: { isManager?: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -19,6 +20,8 @@ export function AssetRegisterActions() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  if (!isManager) return null;
 
   function reset() {
     setRows([]); setFileName(""); setParseError(null);

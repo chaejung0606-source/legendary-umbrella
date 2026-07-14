@@ -196,7 +196,7 @@ export function LoanApplicationDialog({
           <DialogFooter className="items-center gap-2">
             {!assets.length && <span className="text-xs text-muted-foreground">먼저 대여 자산을 검색해 선택해주세요.</span>}
             {assets.length > 0 && !signature && <span className="text-xs text-muted-foreground">대여자 서명을 해주세요.</span>}
-            <Button type="submit" disabled={pending || !assets.length || !signature}>
+            <Button type="submit" data-testid="loan-submit" disabled={pending || !assets.length || !signature}>
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />} 대여 처리{assets.length > 1 ? ` (${assets.length}건)` : ""}
             </Button>
           </DialogFooter>

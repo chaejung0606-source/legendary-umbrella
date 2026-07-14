@@ -29,6 +29,12 @@ async function requireManager(): Promise<{ session: SessionPayload } | { error: 
   if (!["admin", "asset_manager"].includes(session.role)) return { error: "관리자 권한이 필요합니다." };
   return { session };
 }
+// 로그인만 요구(신청자 포함). 서버 액션이 화면 권한과 별개로 인증을 재검증하도록 한다.
+async function requireLogin(): Promise<{ session: SessionPayload } | { error: string }> {
+  const session = await currentSession();
+  if (!session) return { error: "로그인이 필요합니다." };
+  return { session };
+}
 
 // DB(Postgres)를 변경하는 서버 액션.
 // 성공 시 전체 경로를 재검증해 대시보드 지표까지 즉시 반영한다.
@@ -42,6 +48,8 @@ function refreshAll() {
 export async function createAssetAction(
   input: AssetInput
 ): Promise<ActionResult<{ id: string; managementNo: string | null }>> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!input.itemName?.trim()) return { ok: false, error: "품명은 필수입니다." };
   const asset = await createAsset(input);
   refreshAll();
@@ -52,6 +60,8 @@ export async function updateAssetAction(
   id: string,
   input: AssetInput
 ): Promise<ActionResult<{ id: string; managementNo: string | null }>> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
   const asset = await updateAsset(id, input);
   if (!asset) return { ok: false, error: "자산을 찾을 수 없습니다." };
   refreshAll();
@@ -162,6 +172,8 @@ export async function moveAssetAction(
   id: string,
   move: { place: string; roomName?: string | null; userName?: string | null; note?: string | null }
 ): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!move.place?.trim()) return { ok: false, error: "이동할 장소를 입력해주세요." };
   const asset = await moveAsset(id, move);
   if (!asset) return { ok: false, error: "자산을 찾을 수 없습니다." };
@@ -170,6 +182,8 @@ export async function moveAssetAction(
 }
 
 export async function loanAssetAction(assetId: string, input: LoanInput): Promise<ActionResult> {
+  const auth = await requireLogin();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!input.userName?.trim()) return { ok: false, error: "대여자 이름을 입력해주세요." };
   if (!input.dueAt) return { ok: false, error: "반납 예정일을 입력해주세요." };
   const loan = await loanAsset(assetId, { ...input, userName: input.userName.trim() });
@@ -178,8 +192,10 @@ export async function loanAssetAction(assetId: string, input: LoanInput): Promis
   return { ok: true };
 }
 
-// 복수 자산 대여 — 신청서 1장으로 선택한 자산 전부를 같은 조건으로 대여 처리
+// 복수 자산 대여 — 신청서 1장으로 선택한 자산 전부를 같은 조건으로 대여 처리 (로그인 필요)
 export async function loanAssetsAction(assetIds: string[], input: LoanInput): Promise<ActionResult<{ count: number }>> {
+  const auth = await requireLogin();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!assetIds?.length) return { ok: false, error: "대여할 자산을 선택해주세요." };
   if (!input.userName?.trim()) return { ok: false, error: "대여자 이름을 입력해주세요." };
   if (!input.dueAt) return { ok: false, error: "반납 예정일을 입력해주세요." };
@@ -198,6 +214,8 @@ export async function loanAssetsAction(assetIds: string[], input: LoanInput): Pr
 }
 
 export async function returnAssetAction(assetId: string, input: ReturnInput): Promise<ActionResult> {
+  const auth = await requireLogin();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!input.returnerName?.trim()) return { ok: false, error: "반납자 이름을 입력해주세요." };
   const loan = await returnAsset(assetId, { ...input, returnerName: input.returnerName.trim() });
   if (!loan) return { ok: false, error: "자산을 찾을 수 없습니다." };
@@ -261,6 +279,9 @@ export async function consumableTxnAction(
   type: "in" | "out" | "adjust",
   qty: number
 ): Promise<ActionResult> {
+  // 재고 조정(adjust)은 관리자만, 입/출고는 로그인 사용자 허용
+  const auth = type === "adjust" ? await requireManager() : await requireLogin();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!Number.isFinite(qty) || qty < 0 || (type !== "adjust" && qty === 0)) {
     return { ok: false, error: "수량을 올바르게 입력해주세요." };
   }
@@ -273,6 +294,8 @@ export async function consumableTxnAction(
 export async function commitImportAction(
   payload: ImportCommitPayload
 ): Promise<ActionResult<{ assets: number; consumables: number; seats: number; loans: number }>> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
   if (!payload.assets?.length) {
     return { ok: false, error: "가져올 자산 행이 없습니다. '사업단 자산관리 대장' 시트를 확인해주세요." };
   }
@@ -287,46 +310,52 @@ function wrap<T>(result: T | { error: string }): ActionResult {
   refreshAll();
   return { ok: true };
 }
+// 관리자 전용 액션 래퍼: 권한 재검증 후 실행. (설정·기준정보·계정 관리는 관리자만)
+async function managerWrap<T>(run: () => Promise<T | { error: string }>): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  return wrap(await run());
+}
 
 export async function addMajorAction(code: number, name: string): Promise<ActionResult> {
-  return wrap(await addMajorCategory({ code, name }));
+  return managerWrap(() => addMajorCategory({ code, name }));
 }
 export async function updateMajorAction(id: string, code: number, name: string): Promise<ActionResult> {
-  return wrap(await updateMajorCategory(id, { code, name }));
+  return managerWrap(() => updateMajorCategory(id, { code, name }));
 }
 export async function deleteMajorAction(id: string): Promise<ActionResult> {
-  return wrap(await deleteMajorCategory(id));
+  return managerWrap(() => deleteMajorCategory(id));
 }
 export async function addMiddleAction(majorId: string, code: number, name: string, detailItems: string): Promise<ActionResult> {
-  return wrap(await addMiddleCategory(majorId, { code, name, detailItems }));
+  return managerWrap(() => addMiddleCategory(majorId, { code, name, detailItems }));
 }
 export async function updateMiddleAction(id: string, code: number, name: string, detailItems: string): Promise<ActionResult> {
-  return wrap(await updateMiddleCategory(id, { code, name, detailItems }));
+  return managerWrap(() => updateMiddleCategory(id, { code, name, detailItems }));
 }
 export async function deleteMiddleAction(id: string): Promise<ActionResult> {
-  return wrap(await deleteMiddleCategory(id));
+  return managerWrap(() => deleteMiddleCategory(id));
 }
 
 // ─── 기준정보: 건축물 코드 ───
 export async function addBuildingAction(code: string, name: string, campus: string): Promise<ActionResult> {
-  return wrap(await addBuilding({ code, name, campus }));
+  return managerWrap(() => addBuilding({ code, name, campus }));
 }
 export async function updateBuildingAction(id: string, code: string, name: string, campus: string): Promise<ActionResult> {
-  return wrap(await updateBuilding(id, { code, name, campus }));
+  return managerWrap(() => updateBuilding(id, { code, name, campus }));
 }
 export async function deleteBuildingAction(id: string): Promise<ActionResult> {
-  return wrap(await deleteBuilding(id));
+  return managerWrap(() => deleteBuilding(id));
 }
 
-// ─── 계정 / 권한 ───
+// ─── 계정 / 권한 (관리자 전용) ───
 export async function createAccountAction(input: AccountInput): Promise<ActionResult> {
-  return wrap(await createAccount(input));
+  return managerWrap(() => createAccount(input));
 }
 export async function updateAccountAction(id: string, input: AccountInput): Promise<ActionResult> {
-  return wrap(await updateAccount(id, input));
+  return managerWrap(() => updateAccount(id, input));
 }
 export async function deleteAccountAction(id: string): Promise<ActionResult> {
-  return wrap(await deleteAccount(id));
+  return managerWrap(() => deleteAccount(id));
 }
 
 // ─── 앱 설정 (구글시트 URL 등) — 관리자 전용 ───
@@ -382,7 +411,9 @@ export async function decidePromoRequestAction(
   if (decision === "취소") {
     const session = await currentSession();
     if (!session) return { ok: false, error: "로그인이 필요합니다." };
-    return wrap(await decidePromoRequest(id, decision, session.name));
+    const isManager = ["admin", "asset_manager"].includes(session.role);
+    // 관리자가 아니면 본인 명의 신청만 취소할 수 있다(타인 신청 취소 방지).
+    return wrap(await decidePromoRequest(id, decision, session.name, undefined, isManager ? undefined : session.name));
   }
   const auth = await requireManager();
   if ("error" in auth) return { ok: false, error: auth.error };

@@ -360,7 +360,7 @@ export function PromoManager({ items, txns, requests, isManager, userName }: {
                               {deciding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />} 출고완료
                             </Button>
                           )}
-                          {(r.status === "신청" || r.status === "승인") && (
+                          {(r.status === "신청" || r.status === "승인") && (isManager || r.requesterName === userName) && (
                             <Button size="sm" variant="ghost" disabled={deciding} onClick={() => decide(r.id, "취소", label)}>취소</Button>
                           )}
                         </div>

@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { FlaskConical, Boxes, PackageMinus, AlertTriangle, Wallet } from "lucide-react";
 import { getConsumables, getConsumableStats } from "@/data";
 import { formatNumber, formatCurrencyShort } from "@/lib/format";
+import { verifySession, SESSION_COOKIE } from "@/lib/session";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/cards/stat-card";
 import { ConsumableTable } from "@/components/consumables/consumable-table";
@@ -10,6 +12,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ConsumablesPage() {
   const [items, stats] = await Promise.all([getConsumables(), getConsumableStats()]);
+  const store = await cookies();
+  const session = await verifySession(store.get(SESSION_COOKIE)?.value);
+  const isManager = !!session && ["admin", "asset_manager"].includes(session.role);
 
   return (
     <div className="space-y-5">
@@ -18,7 +23,7 @@ export default async function ConsumablesPage() {
         description="자산 원장과 분리해 수량 기반 재고로 관리합니다."
         icon={<FlaskConical className="h-6 w-6" />}
         actions={
-          <ConsumableActions items={items.map((i) => ({ id: i.id, itemName: i.itemName, currentQty: i.currentQty, unit: i.unit }))} />
+          <ConsumableActions isManager={isManager} items={items.map((i) => ({ id: i.id, itemName: i.itemName, currentQty: i.currentQty, unit: i.unit }))} />
         }
       />
 

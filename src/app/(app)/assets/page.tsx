@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
 import { Download, Boxes } from "lucide-react";
 import { filterAssets } from "@/data";
+import { verifySession, SESSION_COOKIE } from "@/lib/session";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,9 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
     usage: sp.usage, status: sp.status, rfid: sp.rfid as never, page, pageSize: 20,
   });
   const exportQs = new URLSearchParams(Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page") as [string, string][])).toString();
+  const store = await cookies();
+  const session = await verifySession(store.get(SESSION_COOKIE)?.value);
+  const isManager = !!session && ["admin", "asset_manager"].includes(session.role);
 
   return (
     <div className="space-y-5">
@@ -30,7 +35,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
             <Button asChild variant="outline" size="default">
               <a href={`/api/export/assets${exportQs ? `?${exportQs}` : ""}`} download><Download className="h-4 w-4" /> 엑셀 다운로드</a>
             </Button>
-            <AssetRegisterActions />
+            <AssetRegisterActions isManager={isManager} />
           </>
         }
       />

@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { ArrowLeft, AlertTriangle, Info, Coins, MapPin, ScanLine, History } from "lucide-react";
 import { getAssetById, isMismatch, getLoanForAsset, isAssetOnLoan } from "@/data";
+import { verifySession, SESSION_COOKIE } from "@/lib/session";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { AssetActions } from "@/components/assets/asset-actions";
@@ -18,6 +20,9 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const loan = await getLoanForAsset(asset.id);
   const isNotebook = !!loan?.isNotebook;
   const onLoan = await isAssetOnLoan(asset);
+  const store = await cookies();
+  const session = await verifySession(store.get(SESSION_COOKIE)?.value);
+  const isManager = !!session && ["admin", "asset_manager"].includes(session.role);
 
   const history = [
     { action: "등록", summary: `자산 최초 등록 (${asset.lockedManagementNo})`, at: asset.createdAt, tone: "lavender" as const },
@@ -48,6 +53,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             managementNo={asset.lockedManagementNo ?? asset.generatedManagementNo ?? "-"}
             currentUserName={asset.currentUserName}
             onLoan={onLoan}
+            isManager={isManager}
           />
         </div>
 

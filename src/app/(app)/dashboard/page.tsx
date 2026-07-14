@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Boxes, Coins, ScanLine, Laptop, Wrench, Sparkles, PlusCircle, ArrowLeftRight, ChevronRight, Clock } from "lucide-react";
 import {
   getDashboardStats, getMonthlyAcquisition, getCategoryRatio, getRecentAssets, getReturnDueLaptops, getRfidCheckAssets, TODAY,
 } from "@/data";
 import { formatCurrency, formatCurrencyShort, formatNumber, formatDate } from "@/lib/format";
+import { verifySession, SESSION_COOKIE } from "@/lib/session";
 import { HeroCard } from "@/components/cards/hero-card";
 import { StatCard } from "@/components/cards/stat-card";
 import { ChartCard } from "@/components/cards/chart-card";
@@ -24,6 +26,10 @@ export default async function DashboardPage() {
     getRfidCheckAssets(5),
   ]);
 
+  const store = await cookies();
+  const session = await verifySession(store.get(SESSION_COOKIE)?.value);
+  const isManager = !!session && ["admin", "asset_manager"].includes(session.role);
+
   const heroBtn = "inline-flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-brand-700 shadow-pill transition hover:bg-white";
 
   return (
@@ -33,8 +39,8 @@ export default async function DashboardPage() {
         subtitle="오늘 확인할 사업단 자산 현황을 한눈에 정리했어요."
         actions={
           <>
-            <Link href="/assets/new" className={heroBtn}><PlusCircle className="h-4 w-4" /> 자산 등록</Link>
-            <Link href="/loans" className={heroBtn}><ArrowLeftRight className="h-4 w-4" /> 대여 처리</Link>
+            {isManager && <Link href="/assets/new" className={heroBtn}><PlusCircle className="h-4 w-4" /> 자산 등록</Link>}
+            <Link href="/loans" className={heroBtn}><ArrowLeftRight className="h-4 w-4" /> 대여 신청</Link>
           </>
         }
       />

@@ -18,12 +18,14 @@ export function AssetActions({
   managementNo,
   currentUserName,
   onLoan,
+  isManager = false,
 }: {
   assetId: string;
   itemName: string;
   managementNo: string;
   currentUserName?: string | null;
   onLoan: boolean; // 현재 대여/사용 중 여부
+  isManager?: boolean; // 수정·이동은 관리자만
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -51,8 +53,12 @@ export function AssetActions({
   return (
     <>
       <div className="flex shrink-0 flex-wrap gap-2">
-        <Button asChild><Link href={`/assets/${assetId}/edit`}><Pencil className="h-4 w-4" /> 수정</Link></Button>
-        <Button variant="outline" onClick={() => setDialog("move")}><ArrowLeftRight className="h-4 w-4" /> 이동 처리</Button>
+        {isManager && (
+          <>
+            <Button asChild><Link href={`/assets/${assetId}/edit`}><Pencil className="h-4 w-4" /> 수정</Link></Button>
+            <Button variant="outline" onClick={() => setDialog("move")}><ArrowLeftRight className="h-4 w-4" /> 이동 처리</Button>
+          </>
+        )}
         {onLoan ? (
           <Button variant="secondary" onClick={() => setDialog("return")}><RotateCcw className="h-4 w-4" /> 반납 처리</Button>
         ) : (
