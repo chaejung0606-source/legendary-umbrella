@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import {
   createAsset, updateAsset, moveAsset, loanAsset, returnAsset, consumableTxn, commitImport, bulkCreateAssets,
+  createConsumableItem, type ConsumableItemInput,
   addMajorCategory, updateMajorCategory, deleteMajorCategory,
   addMiddleCategory, updateMiddleCategory, deleteMiddleCategory,
   addBuilding, updateBuilding, deleteBuilding,
@@ -223,6 +224,17 @@ export async function searchLoanableAssetsAction(q: string): Promise<LoanableAss
       managementNo: a.lockedManagementNo ?? a.generatedManagementNo ?? "-",
       place: [a.place, a.roomName].filter(Boolean).join(" "),
     }));
+}
+
+// 연구재료/소모품 신규 물품 등록 — 관리자 전용
+export async function createConsumableItemAction(input: ConsumableItemInput): Promise<ActionResult> {
+  const auth = await requireManager();
+  if ("error" in auth) return { ok: false, error: auth.error };
+  if (!input.itemName?.trim()) return { ok: false, error: "품명은 필수입니다." };
+  const result = await createConsumableItem(input);
+  if ("error" in result) return { ok: false, error: result.error };
+  refreshAll();
+  return { ok: true };
 }
 
 export async function consumableTxnAction(

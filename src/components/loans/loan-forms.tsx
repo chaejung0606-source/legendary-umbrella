@@ -100,74 +100,74 @@ export function LoanApplicationDialog({
           <DialogDescription>자산 대여 관리 대장 양식에 따라 작성합니다.</DialogDescription>
         </DialogHeader>
 
-        {/* 자산 선택 (미지정 시 검색) */}
-        {!asset ? (
-          <div className="space-y-3">
-            <Field label="대여할 자산 검색" required>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); search(); } }} placeholder="품명·관리번호 검색" className="pl-10" />
-                </div>
-                <Button type="button" size="sm" onClick={search} disabled={searching}>
-                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} 검색
-                </Button>
+        {/* 신청서가 바로 열리고, 대여할 자산은 신청서 안에서 선택한다 */}
+        <form onSubmit={(e) => { e.preventDefault(); submit(new FormData(e.currentTarget)); }} className="space-y-3">
+          <Field label="대여 자산" required>
+            {asset ? (
+              <div className="rounded-2xl bg-muted/60 px-4 py-3">
+                <div className="text-sm font-bold">{asset.itemName}</div>
+                <div className="font-mono text-xs text-muted-foreground">{asset.managementNo}</div>
+                {!preset && (
+                  <button type="button" onClick={() => { setPicked(null); setResults([]); setQ(""); }} className="mt-1 text-[11px] font-semibold text-brand-700 hover:underline">다른 자산 선택</button>
+                )}
               </div>
-            </Field>
-            {results.length > 0 && (
-              <ul className="max-h-52 space-y-1.5 overflow-y-auto pastel-scroll">
-                {results.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      onClick={() => setPicked({ id: r.id, itemName: r.itemName, managementNo: r.managementNo })}
-                      className="w-full rounded-xl bg-muted/60 px-3.5 py-2.5 text-left transition hover:bg-accent"
-                    >
-                      <span className="block text-sm font-semibold">{r.itemName}</span>
-                      <span className="block font-mono text-[11px] text-muted-foreground">{r.managementNo}{r.place && ` · ${r.place}`}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); search(); } }} placeholder="품명·관리번호 검색" className="pl-10" />
+                  </div>
+                  <Button type="button" size="sm" onClick={search} disabled={searching}>
+                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} 검색
+                  </Button>
+                </div>
+                {results.length > 0 && (
+                  <ul className="max-h-40 space-y-1.5 overflow-y-auto pastel-scroll">
+                    {results.map((r) => (
+                      <li key={r.id}>
+                        <button
+                          type="button"
+                          onClick={() => setPicked({ id: r.id, itemName: r.itemName, managementNo: r.managementNo })}
+                          className="w-full rounded-xl bg-muted/60 px-3.5 py-2.5 text-left transition hover:bg-accent"
+                        >
+                          <span className="block text-sm font-semibold">{r.itemName}</span>
+                          <span className="block font-mono text-[11px] text-muted-foreground">{r.managementNo}{r.place && ` · ${r.place}`}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {q && !searching && results.length === 0 && (
+                  <p className="rounded-xl bg-muted/60 px-3.5 py-3 text-xs text-muted-foreground">검색 결과가 없거나 모두 대여 중입니다.</p>
+                )}
+              </div>
             )}
-            {q && !searching && results.length === 0 && (
-              <p className="rounded-xl bg-muted/60 px-3.5 py-3 text-xs text-muted-foreground">검색 결과가 없거나 모두 대여 중입니다.</p>
-            )}
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="대여일자" required><Input name="loanedAt" type="date" required defaultValue={TODAY} /></Field>
+            <Field label="반납 예정일" required><Input name="dueAt" type="date" required min={TODAY} /></Field>
           </div>
-        ) : (
-          <form onSubmit={(e) => { e.preventDefault(); submit(new FormData(e.currentTarget)); }} className="space-y-3">
-            {/* 자산 표시 */}
-            <div className="rounded-2xl bg-muted/60 px-4 py-3">
-              <div className="text-sm font-bold">{asset.itemName}</div>
-              <div className="font-mono text-xs text-muted-foreground">{asset.managementNo}</div>
-              {!preset && (
-                <button type="button" onClick={() => setPicked(null)} className="mt-1 text-[11px] font-semibold text-brand-700 hover:underline">다른 자산 선택</button>
-              )}
-            </div>
+          <Field label="사유" required><Input name="reason" required placeholder="예: 출장용 노트북 사용" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="대여자" required><Input name="userName" required placeholder="이름" /></Field>
+            <Field label="소속 (사번/학번)"><Input name="userAffiliation" placeholder="예: 사업단 / 2024123" /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="전화번호"><Input name="userPhone" type="tel" placeholder="010-0000-0000" /></Field>
+            <Field label="관리자"><Input name="loanManager" placeholder="담당 관리자 이름" /></Field>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="대여일자" required><Input name="loanedAt" type="date" required defaultValue={TODAY} /></Field>
-              <Field label="반납 예정일" required><Input name="dueAt" type="date" required min={TODAY} /></Field>
-            </div>
-            <Field label="사유" required><Input name="reason" required placeholder="예: 출장용 노트북 사용" /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="대여자" required><Input name="userName" required placeholder="이름" /></Field>
-              <Field label="소속 (사번/학번)"><Input name="userAffiliation" placeholder="예: 사업단 / 2024123" /></Field>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="전화번호"><Input name="userPhone" type="tel" placeholder="010-0000-0000" /></Field>
-              <Field label="관리자"><Input name="loanManager" placeholder="담당 관리자 이름" /></Field>
-            </div>
+          <PledgeBox text={LOAN_PLEDGE} />
 
-            <PledgeBox text={LOAN_PLEDGE} />
-
-            <DialogFooter>
-              <Button type="submit" disabled={pending}>
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />} 대여 처리
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+          <DialogFooter className="items-center gap-2">
+            {!asset && <span className="text-xs text-muted-foreground">먼저 대여 자산을 검색해 선택해주세요.</span>}
+            <Button type="submit" disabled={pending || !asset}>
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />} 대여 처리
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

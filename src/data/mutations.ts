@@ -250,6 +250,47 @@ function consumableStatus(currentQty: number, safetyQty: number): ConsumableItem
   return "정상";
 }
 
+export interface ConsumableItemInput {
+  itemName: string;
+  specification?: string | null;
+  unit?: string;
+  unitPrice?: number;
+  currentQty?: number; // 초기 재고
+  safetyQty?: number;
+  location?: string | null;
+  roomName?: string | null;
+  expenditureDocument?: string | null;
+}
+
+/** 연구재료/소모품 신규 물품 등록 — 초기 재고가 있으면 오늘 입고로 기록 */
+export async function createConsumableItem(input: ConsumableItemInput): Promise<ConsumableItem | { error: string }> {
+  const itemName = input.itemName.trim();
+  if (!itemName) return { error: "품명을 입력해주세요." };
+  const dup = await prisma.consumableItem.findFirst({
+    where: { itemName, specification: input.specification?.trim() || null },
+  });
+  if (dup) return { error: `이미 등록된 품목입니다 (${itemName}). 재고 변경은 입고/출고를 사용하세요.` };
+  const currentQty = Math.max(0, Math.round(Number(input.currentQty ?? 0) || 0));
+  const safetyQty = Math.max(0, Math.round(Number(input.safetyQty ?? 0) || 0));
+  const item = await prisma.consumableItem.create({
+    data: {
+      id: uid(),
+      itemName,
+      specification: input.specification?.trim() || null,
+      unit: input.unit?.trim() || "개",
+      unitPrice: Math.max(0, Math.round(Number(input.unitPrice ?? 0) || 0)),
+      currentQty,
+      safetyQty,
+      location: input.location?.trim() || null,
+      roomName: input.roomName?.trim() || null,
+      expenditureDocument: input.expenditureDocument?.trim() || null,
+      lastInboundAt: currentQty > 0 ? TODAY : null,
+      status: consumableStatus(currentQty, safetyQty),
+    },
+  });
+  return item as unknown as ConsumableItem;
+}
+
 export async function consumableTxn(
   itemId: string, type: "in" | "out" | "adjust", qty: number,
 ): Promise<{ item: ConsumableItem } | { error: string }> {
