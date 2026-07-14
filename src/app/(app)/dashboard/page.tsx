@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, Coins, ScanLine, Laptop, Wrench, Sparkles, PlusCircle, Upload, ArrowLeftRight, ChevronRight, Clock } from "lucide-react";
+import { Boxes, Coins, ScanLine, Laptop, Wrench, Sparkles, PlusCircle, ArrowLeftRight, ChevronRight, Clock } from "lucide-react";
 import {
   getDashboardStats, getMonthlyAcquisition, getCategoryRatio, getRecentAssets, getReturnDueLaptops, getRfidCheckAssets, TODAY,
 } from "@/data";
@@ -34,7 +34,6 @@ export default async function DashboardPage() {
         actions={
           <>
             <Link href="/assets/new" className={heroBtn}><PlusCircle className="h-4 w-4" /> 자산 등록</Link>
-            <Link href="/imports" className={heroBtn}><Upload className="h-4 w-4" /> 엑셀 업로드</Link>
             <Link href="/loans" className={heroBtn}><ArrowLeftRight className="h-4 w-4" /> 대여 처리</Link>
           </>
         }

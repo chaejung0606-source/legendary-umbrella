@@ -68,7 +68,7 @@ async function main() {
         email: process.env.SEED_ADMIN_EMAIL ?? "admin@sadan.local",
         password: process.env.SEED_ADMIN_PASSWORD ?? "admin1234",
         role: "admin",
-        permissions: ["dashboard", "assets", "assets.create", "imports", "loans", "consumables", "rfid", "seats", "reports", "settings"],
+        permissions: ["dashboard", "assets", "loans", "consumables", "promo", "rfid", "settings"],
         active: true,
         createdAt: new Date().toISOString(),
       },

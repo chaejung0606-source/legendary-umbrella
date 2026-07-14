@@ -34,14 +34,11 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/assets/:path*",
-    "/imports/:path*",
     "/laptop-loans/:path*",
     "/loans/:path*",
     "/promo/:path*",
     "/consumables/:path*",
     "/rfid/:path*",
-    "/seats/:path*",
-    "/reports/:path*",
     "/settings/:path*",
   ],
 };

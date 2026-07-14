@@ -36,25 +36,21 @@ export async function verifySession(token: string | undefined | null): Promise<S
   }
 }
 
-// 경로 → 필요한 메뉴 권한 키
+// 경로 → 필요한 메뉴 권한 키 (자산 등록 /assets/new 는 자산 원장 권한에 포함)
 export function menuKeyForPath(pathname: string): string | null {
-  if (pathname.startsWith("/assets/new")) return "assets.create";
   if (pathname.startsWith("/assets")) return "assets";
   if (pathname.startsWith("/dashboard")) return "dashboard";
-  if (pathname.startsWith("/imports")) return "imports";
   if (pathname.startsWith("/laptop-loans")) return "loans";
   if (pathname.startsWith("/loans")) return "loans";
   if (pathname.startsWith("/promo")) return "promo";
   if (pathname.startsWith("/consumables")) return "consumables";
   if (pathname.startsWith("/rfid")) return "rfid";
-  if (pathname.startsWith("/seats")) return "seats";
-  if (pathname.startsWith("/reports")) return "reports";
   if (pathname.startsWith("/settings")) return "settings";
   return null;
 }
 
 // 권한 목록에서 접근 가능한 첫 메뉴의 경로 (로그인 후 진입점 / 접근 거부 시 이동)
-const PRIORITY = ["dashboard", "assets", "loans", "consumables", "promo", "rfid", "seats", "reports", "settings", "assets.create"];
+const PRIORITY = ["dashboard", "assets", "loans", "consumables", "promo", "rfid", "settings"];
 export function firstAllowedPath(perms: string[]): string {
   for (const key of PRIORITY) {
     if (perms.includes(key)) return MENU_PERMISSIONS.find((m) => m.key === key)!.href;

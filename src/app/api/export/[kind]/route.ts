@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
-import { filterAssets, getConsumables, getMonthlyAcquisition, getCategoryRatio, getDashboardStats, getPromoItemsWithStock, getPromoTxns, TODAY } from "@/data";
+import { filterAssets, getConsumables, getMonthlyAcquisition, getCategoryRatio, getDashboardStats, getPromoItemsWithStock, getPromoTxns, getCategories, getBuildings, TODAY } from "@/data";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +85,56 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
       "대분류별"
     );
     return workbookResponse(wb, `자산리포트_${TODAY}.xlsx`);
+  }
+
+  if (kind === "asset-template") {
+    // 복수 자산 등록용 엑셀 양식: 입력 시트 + 분류/건축물 코드표 + 작성 안내
+    const [categories, buildings] = await Promise.all([getCategories(), getBuildings()]);
+    const wb = XLSX.utils.book_new();
+
+    const example = {
+      지출문서: "지출-2026-001", 관리기관: "SDU사업단", 대분류: "사무용장비", 중분류: "컴퓨터",
+      "취득날짜(YYYY-MM-DD)": TODAY, "품명(필수)": "노트북컴퓨터", 규격: "16GB/512GB SSD",
+      취득단가: 1450000, 번호: 1, 장소: "집현관(제2도서관)", 호실: "102호", 건축물코드: "B0000142",
+      사용처: "홍길동", RFID번호: "", 태그상태: "미지정", 비고: "예시 행 — 삭제 후 사용",
+    };
+    const main = sheetFromRows([example]);
+    main["!cols"] = Object.keys(example).map((k) => ({ wch: Math.max(12, k.length * 2) }));
+    XLSX.utils.book_append_sheet(wb, main, "자산등록");
+
+    XLSX.utils.book_append_sheet(
+      wb,
+      sheetFromRows(
+        categories.flatMap((m) =>
+          m.middles.map((mid) => ({
+            대분류: m.name, 중분류: mid.name, 분류코드: mid.code,
+            세부품목: (mid.detailItems ?? []).join(", "),
+          }))
+        )
+      ),
+      "분류코드표"
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      sheetFromRows(buildings.map((b) => ({ 건축물코드: b.code, 건축물명: b.name, 캠퍼스: b.campus }))),
+      "건축물코드표"
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      sheetFromRows([
+        { 항목: "필수 입력", 내용: "품명(필수) 열만 필수입니다. 나머지는 비워도 됩니다." },
+        { 항목: "관리번호/연번", 내용: "자동 생성됩니다 — 입력하지 마세요. [연번]+취득일+분류코드+번호+건축물코드 규칙." },
+        { 항목: "대분류/중분류", 내용: "'분류코드표' 시트의 이름을 그대로 사용하세요. 중분류가 있어야 관리번호에 분류코드가 들어갑니다." },
+        { 항목: "취득날짜", 내용: "YYYY-MM-DD 형식 (예: 2026-07-14). 셀 서식이 날짜여도 됩니다." },
+        { 항목: "건축물코드", 내용: "'건축물코드표' 시트의 코드를 그대로 사용하세요 (예: B0000142)." },
+        { 항목: "태그상태", 내용: "부착 / 미부착 / 미발급 / 손상 중 하나. 비우면 '미지정'." },
+        { 항목: "사용처", 내용: "사용자 이름, '사무실 보관', '대여용' 등 자유 입력." },
+        { 항목: "행 수 제한", 내용: "한 번에 최대 500행까지 등록할 수 있습니다." },
+        { 항목: "예시 행", 내용: "'자산등록' 시트의 1번째 데이터 행은 예시입니다. 지우고 실제 데이터를 입력하세요." },
+      ]),
+      "작성안내"
+    );
+    return workbookResponse(wb, `자산등록양식_${TODAY}.xlsx`);
   }
 
   if (kind === "promo") {

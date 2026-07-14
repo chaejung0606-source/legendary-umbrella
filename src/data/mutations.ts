@@ -87,6 +87,21 @@ export async function createAsset(input: AssetInput): Promise<Asset> {
   return asset as unknown as Asset;
 }
 
+/** 복수 자산 등록 — 각 행마다 연번·관리번호를 이어서 자동 생성한다(단일 등록과 동일 규칙). */
+export async function bulkCreateAssets(
+  inputs: AssetInput[]
+): Promise<{ created: number; firstNo: string | null; lastNo: string | null }> {
+  let firstNo: string | null = null;
+  let lastNo: string | null = null;
+  for (const input of inputs) {
+    const asset = await createAsset(input);
+    const no = asset.lockedManagementNo ?? asset.generatedManagementNo;
+    if (!firstNo) firstNo = no;
+    lastNo = no;
+  }
+  return { created: inputs.length, firstNo, lastNo };
+}
+
 export async function updateAsset(id: string, input: AssetInput): Promise<Asset | null> {
   const existing = await prisma.asset.findUnique({ where: { id } });
   if (!existing) return null;
