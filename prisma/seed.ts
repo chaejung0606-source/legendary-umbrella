@@ -97,22 +97,24 @@ async function main() {
   }
 
   // 앱 설정 기본값: 없을 때만 생성 (사용자 편집값 보존)
-  // 2026-07-14 A1에 "진짜" IMPORTDATA 수식이 들어간 시트 (XLSX 변환 방식).
-  // 이전 CSV 방식 시트들은 수식이 텍스트로 저장돼 동작하지 않았다.
+  // 2026-07-14 A1에 "진짜" IMPORTDATA 수식 + 서식(제목행 스타일·날짜·천단위 쉼표)이
+  // 포함된 시트 (XLSX 변환 방식). 이전 CSV 방식 시트들은 수식이 텍스트로 저장돼 동작하지 않았다.
   const DEFAULT_SETTINGS: Record<string, string> = {
     publicBaseUrl: "https://sadan-asset-platform.vercel.app",
-    "sheet.assets.url": "https://docs.google.com/spreadsheets/d/1RRewYMdk9hH-nLcQJiMPYSVipvorYdE2zN1vtJ0u5sU/edit",
-    "sheet.loans.url": "https://docs.google.com/spreadsheets/d/1o1-BjamkIooxYl1pQ6gRmaIQWCtx_iW7GmhZyTMGYy0/edit",
-    "sheet.materials.url": "https://docs.google.com/spreadsheets/d/1ff3TMbTVxg8yrWxA2DMkpwcX17A1BMLGP6cuDy3fZFU/edit",
-    "sheet.promo.url": "https://docs.google.com/spreadsheets/d/11j9SpCxCkmdwKOTX0_QBdox6oF1gJbItdbNjoR48iBw/edit",
+    "sheet.assets.url": "https://docs.google.com/spreadsheets/d/1syITPiok7gFsAYW5nwMhuLhbUt2adFNvKIsg5I2IP8Q/edit",
+    "sheet.loans.url": "https://docs.google.com/spreadsheets/d/18TKjmH_tXZngJvdPb4Fyv2QMXV5YQXJ7VpKIjke6gNI/edit",
+    "sheet.materials.url": "https://docs.google.com/spreadsheets/d/12niFsSowEslx2xFQCjhpxREZWP5X7E5QmyA0ohRbMr8/edit",
+    "sheet.promo.url": "https://docs.google.com/spreadsheets/d/1OJVUcXNxXo_hNSzuqMTNcMbaVzxT1mk-sHuXrJGHjxI/edit",
   };
-  // 예전 고장난 시트(수식이 텍스트) ID — 설정값이 이 시트를 가리키고 있으면 새 시트로 교체.
+  // 예전 시트(수식이 텍스트였거나 서식 없음) ID — 설정값이 이 시트를 가리키고 있으면 새 시트로 교체.
   // 사용자가 직접 다른 URL 로 바꾼 경우에는 건드리지 않는다.
   const STALE_SHEET_IDS = [
     "1Kf37a1nNm0vEwxd3DtQ7G18cNofJz0FDLsVy549_HXY", "1Ew-paU_bEjmbE8wyKy-9PIpvOH4KMpVKGLnuvnlfYcI",
     "1OPtbs8Af_YyhkExNKiTWz5dLzxggrnK42UCws032emU", "1nzHpBsADzBQHzDgbAEScB2rAVBR54QKtSqvgpgKg2A4",
     "1p5ku6aSP7MNasBxUMRQOp0hhMVrtLLFhTN3frmHwW-w", "16DNlw4qGW4WcH7qSJx3t8-Z-mB-vFMdzDtMk9lrl-eM",
     "1XZK10Q4tUxZuP8tKHdZnMbRLpWPxBr1rRx0LjYZLN68", "12bP8SzCxAvLQ5OXU_r7EWxw5CrWgNpeGnSMrI-2OKRE",
+    "1RRewYMdk9hH-nLcQJiMPYSVipvorYdE2zN1vtJ0u5sU", "1o1-BjamkIooxYl1pQ6gRmaIQWCtx_iW7GmhZyTMGYy0",
+    "1ff3TMbTVxg8yrWxA2DMkpwcX17A1BMLGP6cuDy3fZFU", "11j9SpCxCkmdwKOTX0_QBdox6oF1gJbItdbNjoR48iBw",
   ];
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     const exists = await prisma.appSetting.findUnique({ where: { key } });
