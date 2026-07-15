@@ -40,7 +40,7 @@ export default async function DashboardPage() {
         actions={
           <>
             {isManager && <Link href="/assets/new" className={heroBtn}><PlusCircle className="h-4 w-4" /> 자산 등록</Link>}
-            <Link href="/loans" className={heroBtn}><ArrowLeftRight className="h-4 w-4" /> 대여 신청</Link>
+            <Link href="/loans/new" className={heroBtn}><ArrowLeftRight className="h-4 w-4" /> 대여 신청</Link>
           </>
         }
       />

@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
 import { RotateCcw, ArrowUpRight, Eye, AlertTriangle } from "lucide-react";
 import type { LaptopLoan } from "@/types";
@@ -7,7 +6,6 @@ import { formatDate } from "@/lib/format";
 import { TODAY } from "@/data/pools";
 import { Button } from "@/components/ui/button";
 import { LoanStatusBadge } from "@/components/badges/status-badge";
-import { LoanApplicationDialog, ReturnApplicationDialog, type LoanTargetAsset, type ReturnTargetLoan } from "@/components/loans/loan-forms";
 
 function dueSoon(dueAt?: string | null) {
   if (!dueAt) return false;
@@ -16,9 +14,6 @@ function dueSoon(dueAt?: string | null) {
 
 // 노트북 대여현황 표. 상단에 "사용/대여 중", 아래에 "보관·기타". 처리 시 대장 양식 신청서 사용.
 export function LaptopLoanTable({ loans }: { loans: LaptopLoan[] }) {
-  const [loanTarget, setLoanTarget] = useState<LoanTargetAsset | null>(null);
-  const [returnTarget, setReturnTarget] = useState<ReturnTargetLoan | null>(null);
-
   const out = loans.filter((l) => l.status === "직원사용" || l.status === "대여중");
   const rest = loans.filter((l) => l.status !== "직원사용" && l.status !== "대여중");
 
@@ -67,12 +62,12 @@ export function LaptopLoanTable({ loans }: { loans: LaptopLoan[] }) {
                       <td className="px-4 py-3.5">
                         <div className="flex justify-end gap-1.5">
                           {isOut ? (
-                            <Button size="sm" variant="outline" onClick={() => setReturnTarget({ assetId: l.assetId, itemName: l.itemName, managementNo: l.managementNo, userName: l.userName })}>
-                              <RotateCcw className="h-3.5 w-3.5" /> 반납
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/loans/return?asset=${l.assetId}`}><RotateCcw className="h-3.5 w-3.5" /> 반납</Link>
                             </Button>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => setLoanTarget({ id: l.assetId, itemName: l.itemName, managementNo: l.managementNo })}>
-                              <ArrowUpRight className="h-3.5 w-3.5" /> 대여
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/loans/new?asset=${l.assetId}`}><ArrowUpRight className="h-3.5 w-3.5" /> 대여</Link>
                             </Button>
                           )}
                           <Button asChild size="sm" variant="ghost"><Link href={`/assets/${l.assetId}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
@@ -93,9 +88,6 @@ export function LaptopLoanTable({ loans }: { loans: LaptopLoan[] }) {
     <div className="space-y-5">
       <Section title="현재 사용 / 대여 중" rows={out} emptyText="현재 사용·대여 중인 노트북이 없어요." />
       <Section title="보관 · 기타" rows={rest} emptyText="표시할 항목이 없어요." />
-
-      <LoanApplicationDialog open={!!loanTarget} onClose={() => setLoanTarget(null)} asset={loanTarget} />
-      <ReturnApplicationDialog open={!!returnTarget} onClose={() => setReturnTarget(null)} loan={returnTarget} />
     </div>
   );
 }

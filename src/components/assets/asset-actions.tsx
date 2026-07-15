@@ -9,7 +9,6 @@ import { Field } from "@/components/ui/form-controls";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toaster";
 import { moveAssetAction } from "@/app/actions";
-import { LoanApplicationDialog, ReturnApplicationDialog } from "@/components/loans/loan-forms";
 
 // 자산 상세 헤더의 액션 버튼 묶음: 수정 / 이동 처리 / 대여·반납 신청서 (전체 자산 대상).
 export function AssetActions({
@@ -29,7 +28,7 @@ export function AssetActions({
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [dialog, setDialog] = useState<"move" | "loan" | "return" | null>(null);
+  const [dialog, setDialog] = useState<"move" | null>(null);
   const [pending, startTransition] = useTransition();
 
   function runMove(fd: FormData) {
@@ -60,9 +59,9 @@ export function AssetActions({
           </>
         )}
         {onLoan ? (
-          <Button variant="secondary" onClick={() => setDialog("return")}><RotateCcw className="h-4 w-4" /> 반납 처리</Button>
+          <Button asChild variant="secondary"><Link href={`/loans/return?asset=${assetId}`}><RotateCcw className="h-4 w-4" /> 반납 처리</Link></Button>
         ) : (
-          <Button variant="secondary" onClick={() => setDialog("loan")}><ArrowUpRight className="h-4 w-4" /> 대여 처리</Button>
+          <Button asChild variant="secondary"><Link href={`/loans/new?asset=${assetId}`}><ArrowUpRight className="h-4 w-4" /> 대여 처리</Link></Button>
         )}
       </div>
 
@@ -84,18 +83,6 @@ export function AssetActions({
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* 대여/반납 신청서 (대장 양식) */}
-      <LoanApplicationDialog
-        open={dialog === "loan"}
-        onClose={() => setDialog(null)}
-        asset={{ id: assetId, itemName, managementNo }}
-      />
-      <ReturnApplicationDialog
-        open={dialog === "return"}
-        onClose={() => setDialog(null)}
-        loan={{ assetId, itemName, managementNo, userName: currentUserName }}
-      />
     </>
   );
 }

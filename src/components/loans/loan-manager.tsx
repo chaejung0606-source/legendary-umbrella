@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
 import { Search, ArrowUpRight, RotateCcw, Eye, AlertTriangle, Laptop, Boxes, FilePlus2 } from "lucide-react";
 import type { LaptopLoan } from "@/types";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoanStatusBadge, StatusBadge } from "@/components/badges/status-badge";
 import { SoftCard, SoftCardHeader } from "@/components/cards/soft-card";
-import { LoanApplicationDialog, ReturnApplicationDialog, type LoanTargetAsset, type ReturnTargetLoan } from "./loan-forms";
 
 export interface LoanCandidate {
   id: string;
@@ -36,15 +34,6 @@ export function LoanManager({
   candidates: LoanCandidate[];
   q: string;
 }) {
-  const [loanOpen, setLoanOpen] = useState(false);
-  const [loanTarget, setLoanTarget] = useState<LoanTargetAsset | null>(null);
-  const [returnOpen, setReturnOpen] = useState(false);
-  const [returnTarget, setReturnTarget] = useState<ReturnTargetLoan | null>(null);
-
-  const outTargets: ReturnTargetLoan[] = out.map((l) => ({
-    assetId: l.assetId, itemName: l.itemName, managementNo: l.managementNo, userName: l.userName,
-  }));
-
   return (
     <div className="space-y-5">
       {/* ── 독립 대여/반납 신청 버튼 ── */}
@@ -54,11 +43,11 @@ export function LoanManager({
           <p className="mt-0.5 text-sm text-muted-foreground">자산 대여 관리 대장 양식으로 신청서를 작성해 처리합니다.</p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
-          <Button className="flex-1 sm:flex-none" onClick={() => { setLoanTarget(null); setLoanOpen(true); }}>
-            <ArrowUpRight className="h-4 w-4" /> 대여 신청
+          <Button asChild className="flex-1 sm:flex-none">
+            <Link href="/loans/new"><ArrowUpRight className="h-4 w-4" /> 대여 신청</Link>
           </Button>
-          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setReturnTarget(null); setReturnOpen(true); }}>
-            <RotateCcw className="h-4 w-4" /> 반납 처리
+          <Button asChild variant="outline" className="flex-1 sm:flex-none">
+            <Link href="/loans/return"><RotateCcw className="h-4 w-4" /> 반납 처리</Link>
           </Button>
         </div>
       </SoftCard>
@@ -92,8 +81,8 @@ export function LoanManager({
                       <div className="font-mono text-xs text-muted-foreground">{c.managementNo}{c.place && ` · ${c.place}`}</div>
                     </div>
                     <div className="flex gap-1.5">
-                      <Button size="sm" onClick={() => { setLoanTarget({ id: c.id, itemName: c.itemName, managementNo: c.managementNo }); setLoanOpen(true); }}>
-                        <ArrowUpRight className="h-3.5 w-3.5" /> 대여
+                      <Button asChild size="sm">
+                        <Link href={`/loans/new?asset=${c.id}`}><ArrowUpRight className="h-3.5 w-3.5" /> 대여</Link>
                       </Button>
                       <Button asChild size="sm" variant="ghost"><Link href={`/assets/${c.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                     </div>
@@ -159,8 +148,8 @@ export function LoanManager({
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-end gap-1.5">
-                          <Button size="sm" variant="outline" onClick={() => { setReturnTarget({ assetId: l.assetId, itemName: l.itemName, managementNo: l.managementNo, userName: l.userName }); setReturnOpen(true); }}>
-                            <RotateCcw className="h-3.5 w-3.5" /> 반납
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/loans/return?asset=${l.assetId}`}><RotateCcw className="h-3.5 w-3.5" /> 반납</Link>
                           </Button>
                           <Button asChild size="sm" variant="ghost"><Link href={`/assets/${l.assetId}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                         </div>
@@ -218,9 +207,6 @@ export function LoanManager({
         </div>
       </div>
 
-      {/* 신청서 다이얼로그 */}
-      <LoanApplicationDialog open={loanOpen} onClose={() => { setLoanOpen(false); setLoanTarget(null); }} asset={loanTarget} />
-      <ReturnApplicationDialog open={returnOpen} onClose={() => { setReturnOpen(false); setReturnTarget(null); }} loan={returnTarget} outLoans={outTargets} />
     </div>
   );
 }

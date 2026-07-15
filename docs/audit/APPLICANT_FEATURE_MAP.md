@@ -41,12 +41,13 @@
 | 기능 | 신청자 | 비고 |
 |------|--------|------|
 | 대여/사용 현황 조회 | ✅ | |
-| 대여 신청서(즉시 오픈) | ✅ | 폼 내 자산 **복수** 검색·선택 |
+| 대여 신청서 | ✅ | **독립 페이지** `/loans/new` (모달 아님). `?asset=<id>`로 기본 선택 |
+| 대여 자산 복수 선택 | ✅ | 폼 내 자산 검색·복수 선택 |
 | 대여자 서명(드로잉) | ✅ | `SignaturePad`(canvas) 필수 |
 | 동의(서약) 체크 | ✅ | `pledge` 필수 체크박스 |
 | 소속 / 사번·학번 분리 입력 | ✅ | `userAffiliation` / `userIdNo` |
-| 반납 처리 | ✅ | `returnAssetAction`(`requireLogin`) |
-| 제출 | ✅ | `loanAssetsAction`(`requireLogin`) |
+| 반납 신청서 | ✅ | **독립 페이지** `/loans/return` (모달 아님). `?asset=<id>`로 기본 선택 |
+| 제출 | ✅ | `loanAssetsAction` / `returnAssetAction`(`requireLogin`) |
 
 ## 5. 연구재료 / 소모품 `/consumables`
 

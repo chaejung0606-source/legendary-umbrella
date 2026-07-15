@@ -105,31 +105,32 @@ try {
   await page.goto(BASE + '/assets/asset-179', { waitUntil: 'networkidle' });
   log('F6 상세 진입', (await page.locator('text=노트북').count()) > 0);
   log('F7 수정/이동 버튼 숨김', (await page.getByRole('button', { name: /수정/ }).count()) === 0 && (await page.getByRole('button', { name: /이동/ }).count()) === 0);
-  log('F8 대여/반납 사용가능', (await page.getByRole('button', { name: /대여|반납/ }).count()) > 0);
+  log('F8 대여/반납 사용가능(링크)', (await page.getByRole('link', { name: /대여|반납/ }).count()) > 0 || (await page.getByRole('button', { name: /대여|반납/ }).count()) > 0);
 
-  // G. 대여 신청 (복수 자산 + 서명 + 동의 + 제출)
-  console.log('\n== G. 대여 신청 ==');
+  // G. 대여 신청 — 독립 페이지(/loans/new)에서 복수 자산 + 서명 + 동의 + 제출
+  console.log('\n== G. 대여 신청(독립 페이지) ==');
   await page.goto(BASE + '/loans', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: '대여 신청' }).first().click();
-  const dlg = page.locator('[role="dialog"]');
-  await dlg.waitFor({ state: 'visible' });
-  log('G1 신청서 즉시 오픈', (await dlg.locator('text=자산 대여 신청서').count()) > 0);
-  await dlg.locator('input[placeholder*="검색"]').fill('노트북');
-  await dlg.getByRole('button', { name: /검색/ }).click();
+  await page.getByRole('link', { name: '대여 신청' }).first().click();
+  await page.waitForURL('**/loans/new', { timeout: 15000 }).catch(() => {});
+  const form = page.locator('main form').first();
+  await form.waitFor({ state: 'visible' });
+  log('G1 대여 신청서 독립 페이지 이동', page.url().includes('/loans/new') && (await page.getByText('자산 대여 신청서').count()) > 0, page.url());
+  await form.locator('input[placeholder*="검색"]').fill('노트북');
+  await form.getByRole('button', { name: /검색/ }).click();
   await page.waitForTimeout(1200);
-  const addBtns = dlg.locator('ul button.w-full');
+  const addBtns = form.locator('ul button.w-full');
   if ((await addBtns.count()) > 0) await addBtns.first().click();
   await page.waitForTimeout(300);
-  log('G2 자산 1건 선택', (await dlg.locator('button[aria-label="선택 해제"]').count()) >= 1);
-  if ((await dlg.locator('ul button.w-full').count()) > 0) await dlg.locator('ul button.w-full').first().click();
+  log('G2 자산 1건 선택', (await form.locator('button[aria-label="선택 해제"]').count()) >= 1);
+  if ((await form.locator('ul button.w-full').count()) > 0) await form.locator('ul button.w-full').first().click();
   await page.waitForTimeout(300);
-  log('G3 복수 자산 선택', (await dlg.locator('button[aria-label="선택 해제"]').count()) >= 1);
-  await dlg.locator('input[name="dueAt"]').fill('2026-08-31');
-  await dlg.locator('input[name="reason"]').fill(`${TAG} 자동화 테스트 대여`);
-  await dlg.locator('input[name="userName"]').fill(`${TAG} 대여자`);
-  await dlg.locator('input[name="userAffiliation"]').fill('사업단');
-  await dlg.locator('input[name="userIdNo"]').fill('2026999');
-  const canvas = dlg.locator('[data-testid="signature-pad"]');
+  log('G3 복수 자산 선택', (await form.locator('button[aria-label="선택 해제"]').count()) >= 1);
+  await form.locator('input[name="dueAt"]').fill('2026-08-31');
+  await form.locator('input[name="reason"]').fill(`${TAG} 자동화 테스트 대여`);
+  await form.locator('input[name="userName"]').fill(`${TAG} 대여자`);
+  await form.locator('input[name="userAffiliation"]').fill('사업단');
+  await form.locator('input[name="userIdNo"]').fill('2026999');
+  const canvas = form.locator('[data-testid="signature-pad"]');
   await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (box) {
@@ -139,12 +140,32 @@ try {
     await page.mouse.up();
   }
   await page.waitForTimeout(300);
-  await dlg.locator('input[name="pledge"]').check(); // 동의(서약) 필수
-  const submitBtn = dlg.locator('[data-testid="loan-submit"]');
+  await form.locator('input[name="pledge"]').check(); // 동의(서약) 필수
+  const submitBtn = form.locator('[data-testid="loan-submit"]');
   log('G4 서명+동의 후 제출버튼 활성화', !(await submitBtn.isDisabled()));
   await submitBtn.click();
-  await page.waitForTimeout(1500);
-  log('G5 대여 신청 제출 성공(다이얼로그 닫힘)', (await dlg.count()) === 0 || !(await dlg.isVisible().catch(() => false)));
+  await page.waitForURL('**/loans', { timeout: 15000 }).catch(() => {});
+  log('G5 대여 신청 제출 성공(목록으로 이동)', page.url().endsWith('/loans'), page.url());
+
+  // G6. 반납 신청 — 독립 페이지(/loans/return). 방금 대여한 자산을 반납(테스트 정리 겸)
+  console.log('\n== G6. 반납 신청(독립 페이지) ==');
+  const e2eRow = page.locator('tr', { hasText: `${TAG} 대여자` }).first();
+  if ((await e2eRow.count()) > 0) {
+    await e2eRow.getByRole('link', { name: '반납' }).click();
+    await page.waitForURL('**/loans/return**', { timeout: 15000 }).catch(() => {});
+    const rform = page.locator('main form').first();
+    await rform.waitFor({ state: 'visible' });
+    log('G6-1 반납 신청서 독립 페이지 이동', page.url().includes('/loans/return'), page.url());
+    await rform.locator('input[name="returnerName"]').fill(`${TAG} 대여자`);
+    await rform.locator('input[name="pledge"]').check();
+    const rsubmit = rform.locator('[data-testid="return-submit"]');
+    log('G6-2 반납 제출버튼 존재', (await rsubmit.count()) > 0);
+    await rsubmit.click();
+    await page.waitForURL('**/loans', { timeout: 15000 }).catch(() => {});
+    log('G6-3 반납 처리 성공(목록으로 이동)', page.url().endsWith('/loans'), page.url());
+  } else {
+    log('G6 반납 대상 행 존재', false, '방금 대여한 건을 찾지 못함');
+  }
 
   // H. 홍보 출고 신청 → 본인 취소 (+ IDOR: 본인 것만 취소 노출)
   console.log('\n== H. 홍보 출고 신청/취소 ==');
