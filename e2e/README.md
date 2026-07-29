@@ -11,20 +11,27 @@
    ```
 2. 신청자 테스트 계정 시드 (role=user, permissions=[dashboard,assets,loans,consumables,promo]):
    - 기본값: `applicant@e2e.local` / `test1234`
+   - **계정 이름(name)은 반드시 `[E2E-TEST] 신청자`** — 홍보 신청 취소는 `requesterName === 계정 이름`으로
+     본인 확인을 하므로, 이름이 다르면 H3/H4 가 실패한다.
+   - 비밀번호는 평문 비교이므로 해시가 아닌 평문으로 저장한다.
    - 계정 CRUD(설정 > 계정/권한) 또는 DB로 생성. 운영 계정과 분리된 테스트 전용 계정을 사용한다.
 3. DB 연결(`DATABASE_URL`/`DIRECT_URL`)이 설정된 상태.
 
 ## 실행
 
-```bash
-# playwright-core 모듈 경로(NODE_PATH)는 환경에 맞게 지정
-export NODE_PATH=/opt/node22/lib/node_modules/playwright/node_modules:/opt/node22/lib/node_modules
+`playwright-core` 는 전역 설치본을 심볼릭 링크로 연결해 쓴다(ESM 은 `NODE_PATH` 를 따르지 않는다).
 
-# 신청자 종합 (50 케이스)
+```bash
+ln -sfn /opt/node22/lib/node_modules/playwright/node_modules/playwright-core node_modules/playwright-core
+
+# 신청자 종합 (53 케이스)
 node e2e/applicant.e2e.mjs
 
 # 관리자 회귀 (21 케이스) — 신청자 가드 추가 후 관리자 기능 무손상 확인
 node e2e/manager-regression.e2e.mjs
+
+# 세션 복구 (13 케이스) — 손상/구버전 쿠키가 로그인 화면을 500 으로 만들지 않는지 확인
+node e2e/session-recovery.e2e.mjs
 ```
 
 ### 환경변수(선택)
@@ -58,3 +65,12 @@ psql "$DATABASE_URL" -f e2e/cleanup.sql
 - **I** 소모품 조회 + 입·출고 가능 + 물품등록·재고조정 숨김
 - **J** 반응형 뷰포트(360/390/768/1366) 무횡스크롤
 - **K** 로그아웃 후 보호 경로 차단
+
+### session-recovery.e2e.mjs
+
+- **A** `perms` 클레임 없는 구버전 쿠키로 `/` 접근 → 500 아님 + 재로그인 안내
+- **B** 권한이 빈 쿠키 → 무한 리다이렉트 없이 로그인 폼
+- **C** `perms` 가 배열이 아닌 쿠키 → 500 아님
+- **D** 손상된 쿠키로 보호 경로 접근 → 로그인 화면
+- **E** 손상된 쿠키 상태에서 정상 로그인으로 복구
+- **F/G** `next` 파라미터 — 외부 주소 차단(오픈 리다이렉트), 내부 경로는 복귀

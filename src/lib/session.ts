@@ -49,11 +49,21 @@ export function menuKeyForPath(pathname: string): string | null {
   return null;
 }
 
+// 세션/계정에서 온 권한 값을 항상 문자열 배열로 정규화한다.
+// 구버전 쿠키처럼 perms 가 아예 없는 토큰이 들어와도 터지지 않게 한다.
+export function normalizePerms(perms: unknown): string[] {
+  return Array.isArray(perms) ? perms.filter((p): p is string => typeof p === "string") : [];
+}
+
 // 권한 목록에서 접근 가능한 첫 메뉴의 경로 (로그인 후 진입점 / 접근 거부 시 이동)
+// 접근 가능한 메뉴가 하나도 없으면 "/"(로그인 화면)을 돌려준다.
 const PRIORITY = ["dashboard", "assets", "loans", "consumables", "promo", "rfid", "settings"];
-export function firstAllowedPath(perms: string[]): string {
+export function firstAllowedPath(perms: unknown): string {
+  const list = normalizePerms(perms);
   for (const key of PRIORITY) {
-    if (perms.includes(key)) return MENU_PERMISSIONS.find((m) => m.key === key)!.href;
+    if (!list.includes(key)) continue;
+    const menu = MENU_PERMISSIONS.find((m) => m.key === key);
+    if (menu) return menu.href;
   }
   return "/";
 }

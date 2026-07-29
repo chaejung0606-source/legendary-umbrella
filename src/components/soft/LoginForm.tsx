@@ -1,13 +1,14 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Boxes, Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
+import { Boxes, Mail, Lock, LogIn, Loader2, AlertCircle, Info } from "lucide-react";
 import { SoftCard } from "@/components/soft/SoftCard";
 import { SoftButton } from "@/components/soft/SoftButton";
 import { loginAction } from "@/app/auth-actions";
 import { APP_VERSION, APP_VERSION_DATE } from "@/data/changelog";
+import { safeNextPath } from "@/lib/utils";
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, notice }: { next?: string; notice?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +21,7 @@ export function LoginForm({ next }: { next?: string }) {
     startTransition(async () => {
       const res = await loginAction(email, password);
       if (res.ok) {
-        router.replace(next && next.startsWith("/") ? next : res.redirect);
+        router.replace(safeNextPath(next) ?? res.redirect);
         router.refresh();
       } else {
         setError(res.error);
@@ -47,6 +48,12 @@ export function LoginForm({ next }: { next?: string }) {
         </div>
 
         <SoftCard large className="p-7">
+          {notice && (
+            <div className="mb-4 flex items-start gap-2 rounded-2xl ceramic-sky grain px-3.5 py-2.5 text-sm text-sky-900/80">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{notice}</span>
+            </div>
+          )}
           <form onSubmit={submit} className="space-y-4">
             <label className="block">
               <span className="mb-1.5 block text-[13px] font-medium text-ceramic-sub">이메일</span>
