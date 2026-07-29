@@ -15,7 +15,8 @@
   연결 실패도 빌드 실패로 처리하려면 `DB_PREPARE_STRICT=1`
 - 데이터 계층: `src/data/index.ts`(조회, async) · `src/data/mutations.ts`(쓰기) · 서버 액션 `src/app/actions.ts`
 - 인증: 로그인(/) + JWT 쿠키 세션 + `src/middleware.ts`가 메뉴별 권한 강제
-  (단, `/api/sheets/*`는 구글시트 IMPORTDATA 연동을 위해 공개 유지 — 인증 뒤로 숨기지 말 것)
+  (단, `/api/sheets/*`는 구글시트 IMPORTDATA 연동을 위해, `/api/health`는 로그인 불가 상황 진단을 위해
+   공개 유지 — 인증 뒤로 숨기지 말 것. health 응답에 접속정보/호스트를 담지 말 것)
 - 디자인: 무광 세라믹(아이보리·민트) 토큰 기반 — `globals.css` :root + `tailwind.config.ts`(brand/pastel/ceramic)
 
 ## 푸시 전 체크
