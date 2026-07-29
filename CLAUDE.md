@@ -9,7 +9,10 @@
 ## 스택 / 구조
 - Next.js 15(App Router) · TypeScript · Tailwind · Prisma + PostgreSQL(Supabase, `sadan` 전용 스키마)
 - 배포: Vercel. 환경변수 `DATABASE_URL`(6543 pgbouncer) · `DIRECT_URL`(5432) · `AUTH_SECRET`
-- build 스크립트가 `prisma db push` + `seed`(테이블 비어있을 때만 — 편집 데이터 보존)를 수행
+- build 스크립트는 `scripts/db-prepare.ts`로 DB 연결을 먼저 확인한 뒤
+  `prisma db push` + `seed`(테이블 비어있을 때만 — 편집 데이터 보존)를 수행한다.
+  연결 자체가 안 되면 경고만 남기고 빌드는 계속한다(DB 장애로 배포가 통째로 막히지 않도록).
+  연결 실패도 빌드 실패로 처리하려면 `DB_PREPARE_STRICT=1`
 - 데이터 계층: `src/data/index.ts`(조회, async) · `src/data/mutations.ts`(쓰기) · 서버 액션 `src/app/actions.ts`
 - 인증: 로그인(/) + JWT 쿠키 세션 + `src/middleware.ts`가 메뉴별 권한 강제
   (단, `/api/sheets/*`는 구글시트 IMPORTDATA 연동을 위해 공개 유지 — 인증 뒤로 숨기지 말 것)

@@ -19,12 +19,17 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await loginAction(email, password);
-      if (res.ok) {
-        router.replace(safeNextPath(next) ?? res.redirect);
-        router.refresh();
-      } else {
-        setError(res.error);
+      try {
+        const res = await loginAction(email, password);
+        if (res.ok) {
+          router.replace(safeNextPath(next) ?? res.redirect);
+          router.refresh();
+        } else {
+          setError(res.error);
+        }
+      } catch {
+        // 서버 액션 자체가 실패(네트워크 끊김·서버 오류)해도 로그인 화면은 유지한다.
+        setError("로그인 요청을 처리하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.");
       }
     });
   }
