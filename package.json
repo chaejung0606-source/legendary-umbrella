@@ -1,6 +1,6 @@
 {
   "name": "sadan-asset-platform",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "private": true,
   "description": "사업단 자산관리 플랫폼 - Business unit asset management platform",
   "scripts": {
@@ -12,6 +12,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
+    "db:hash-passwords": "tsx scripts/hash-passwords.ts",
+    "db:seed-e2e": "tsx scripts/seed-e2e-account.ts",
     "db:studio": "prisma studio",
     "verify:import": "tsx scripts/verify-import.ts"
   },

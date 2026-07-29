@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import seedData from "./seed-data.json";
 import promoSeed from "./promo-seed.json";
+import { hashPassword } from "../src/lib/password";
 
 /**
  * 시드 정책 (버전드):
@@ -66,7 +67,8 @@ async function main() {
         id: "acc-1",
         name: process.env.SEED_ADMIN_NAME ?? "시스템 관리자",
         email: process.env.SEED_ADMIN_EMAIL ?? "admin@sadan.local",
-        password: process.env.SEED_ADMIN_PASSWORD ?? "admin1234",
+        // 비밀번호는 해시로만 저장한다(평문 저장 금지).
+        password: await hashPassword(process.env.SEED_ADMIN_PASSWORD ?? "admin1234"),
         role: "admin",
         permissions: ["dashboard", "assets", "loans", "consumables", "promo", "rfid", "settings"],
         active: true,

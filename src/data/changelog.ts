@@ -25,6 +25,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.3.0",
+    date: "2026.07.29.",
+    title: "비밀번호 bcrypt 해시 저장 전환",
+    items: [
+      { tag: "수정", text: "비밀번호를 평문이 아닌 bcrypt 해시로 저장 — DB가 유출돼도 원래 비밀번호를 복원할 수 없다" },
+      { tag: "개선", text: "기존 계정은 다음 로그인 때 자동으로 해시로 전환된다 — 사용자는 하던 대로 로그인만 하면 되고, 비밀번호를 바꿀 필요도 없다" },
+      { tag: "신규", text: "오래 로그인하지 않아 평문으로 남은 계정 일괄 변환 명령(npm run db:hash-passwords, 여러 번 실행해도 안전)" },
+    ],
+  },
+  {
     version: "3.2.1",
     date: "2026.07.29.",
     title: "로그인 화면 서버 오류(Application error) 수정",

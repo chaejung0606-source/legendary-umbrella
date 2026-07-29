@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { TODAY } from "./pools";
 import { generateManagementNumber } from "@/lib/management-number";
 import { classifyUsage } from "@/lib/usage";
+import { hashPassword, verifyPassword } from "@/lib/password";
 
 // DB(Postgres) 쓰기 계층. 서버 액션에서만 호출한다.
 const nowIso = () => new Date().toISOString();
@@ -442,7 +443,7 @@ export async function createAccount(input: AccountInput): Promise<Account | { er
   if (!input.password || input.password.length < 4) return { error: "비밀번호는 4자 이상 입력해주세요." };
   if (await prisma.account.findFirst({ where: { email: { equals: input.email, mode: "insensitive" } } })) return { error: "이미 등록된 이메일입니다." };
   return prisma.account.create({
-    data: { id: uid(), name: input.name.trim(), email: input.email.trim(), password: input.password, role: input.role, permissions: input.permissions, active: input.active, createdAt: nowIso() },
+    data: { id: uid(), name: input.name.trim(), email: input.email.trim(), password: await hashPassword(input.password), role: input.role, permissions: input.permissions, active: input.active, createdAt: nowIso() },
   });
 }
 
@@ -454,7 +455,7 @@ export async function updateAccount(id: string, input: AccountInput): Promise<Ac
     where: { id },
     data: {
       name: input.name.trim(), email: input.email.trim(), role: input.role, permissions: input.permissions, active: input.active,
-      ...(input.password && input.password.length >= 4 ? { password: input.password } : {}),
+      ...(input.password && input.password.length >= 4 ? { password: await hashPassword(input.password) } : {}),
     },
   });
 }
@@ -470,7 +471,23 @@ export async function deleteAccount(id: string): Promise<{ ok: true } | { error:
 // 로그인 검증
 export async function verifyLogin(email: string, password: string): Promise<Account | { error: string }> {
   const account = await prisma.account.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
-  if (!account || account.password !== password) return { error: "이메일 또는 비밀번호가 올바르지 않습니다." };
+  if (!account) return { error: "이메일 또는 비밀번호가 올바르지 않습니다." };
+
+  const check = await verifyPassword(password, account.password);
+  if (!check.ok) return { error: "이메일 또는 비밀번호가 올바르지 않습니다." };
+
+  // 평문으로 저장돼 있던 계정 — 로그인에 성공한 지금 해시로 교체한다(점진 전환).
+  // 교체에 실패해도 로그인 자체는 막지 않는다(다음 로그인에서 다시 시도된다).
+  if (check.needsUpgrade) {
+    try {
+      const hashed = await hashPassword(password);
+      await prisma.account.update({ where: { id: account.id }, data: { password: hashed } });
+      account.password = hashed;
+    } catch (e) {
+      console.error("[login] 비밀번호 해시 전환 실패", e);
+    }
+  }
+
   if (!account.active) return { error: "비활성화된 계정입니다. 관리자에게 문의하세요." };
   if (account.permissions.length === 0) return { error: "접근 가능한 메뉴가 없습니다. 관리자에게 권한을 요청하세요." };
   return account;

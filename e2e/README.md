@@ -9,12 +9,17 @@
    ```bash
    npm run build && npx next start -p 3100
    ```
-2. 신청자 테스트 계정 시드 (role=user, permissions=[dashboard,assets,loans,consumables,promo]):
-   - 기본값: `applicant@e2e.local` / `test1234`
-   - **계정 이름(name)은 반드시 `[E2E-TEST] 신청자`** — 홍보 신청 취소는 `requesterName === 계정 이름`으로
-     본인 확인을 하므로, 이름이 다르면 H3/H4 가 실패한다.
-   - 비밀번호는 평문 비교이므로 해시가 아닌 평문으로 저장한다.
-   - 계정 CRUD(설정 > 계정/권한) 또는 DB로 생성. 운영 계정과 분리된 테스트 전용 계정을 사용한다.
+2. 신청자 테스트 계정 시드 — **스크립트로 만든다**(조건을 손으로 맞추면 틀리기 쉽다):
+   ```bash
+   npm run db:seed-e2e
+   ```
+   - 기본값: `applicant@e2e.local` / `test1234`, 이름 `[E2E-TEST] 신청자`,
+     role=user, permissions=[dashboard,assets,loans,consumables,promo]
+   - **계정 이름(name)이 `[E2E-TEST] 신청자` 여야 한다** — 홍보 신청 취소는
+     `requesterName === 계정 이름`으로 본인 확인을 하므로, 다르면 H3/H4 가 실패한다.
+   - `E2E_EMAIL` · `E2E_PW` · `E2E_NAME` 환경변수로 덮어쓸 수 있다.
+   - 비밀번호는 bcrypt 해시로 저장된다. DB 에 직접 평문으로 넣어도 첫 로그인에 자동 전환된다.
+   - 운영 DB 에서는 실행하지 말 것.
 3. DB 연결(`DATABASE_URL`/`DIRECT_URL`)이 설정된 상태.
 
 ## 실행
@@ -32,6 +37,9 @@ node e2e/manager-regression.e2e.mjs
 
 # 세션 복구 (13 케이스) — 손상/구버전 쿠키가 로그인 화면을 500 으로 만들지 않는지 확인
 node e2e/session-recovery.e2e.mjs
+
+# 비밀번호 해싱 (13 케이스) — 평문 계정의 자동 전환 + 신규 계정 해시 저장 확인
+node e2e/password-hashing.e2e.mjs
 ```
 
 ### 환경변수(선택)
@@ -74,3 +82,13 @@ psql "$DATABASE_URL" -f e2e/cleanup.sql
 - **D** 손상된 쿠키로 보호 경로 접근 → 로그인 화면
 - **E** 손상된 쿠키 상태에서 정상 로그인으로 복구
 - **F/G** `next` 파라미터 — 외부 주소 차단(오픈 리다이렉트), 내부 경로는 복귀
+
+### password-hashing.e2e.mjs
+
+실제 DB 를 열어 저장된 값을 직접 확인한다(같은 `DATABASE_URL` 필요).
+
+- **A/B** 평문으로 저장된 구버전 계정 → 기존 비밀번호로 로그인 성공 → DB 값이 bcrypt 해시로 교체
+- **C** 전환 후에도 같은 비밀번호로 로그인, 재로그인 시 해시 재생성 없음
+- **D** 틀린 비밀번호는 계속 거부
+- **E** 설정 > 계정/권한에서 만든 계정은 처음부터 해시로 저장
+- **F** 시드 관리자도 해시 상태

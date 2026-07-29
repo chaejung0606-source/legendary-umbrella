@@ -21,7 +21,13 @@
 
 ## 푸시 전 체크
 - `npm run build` 통과(로컬 DB 필요 시 Postgres 기동) · 주요 화면 콘솔 에러/404 없음
-- `.env` 커밋 금지 · 데모 계정: admin@sadan.local/admin1234 (manager/auditor 동일 패턴)
+- `.env` 커밋 금지
+- 시드 계정은 **관리자 1개뿐**이며 계정 테이블이 비어 있을 때만 생성된다
+  (기본 `admin@sadan.local` / `admin1234`, `SEED_ADMIN_EMAIL`·`SEED_ADMIN_PASSWORD`·`SEED_ADMIN_NAME`로 덮어쓰기 가능).
+  `manager@sadan.local`·`auditor@sadan.local`은 DB 연동 이전 인메모리 생성기(`src/data/generate.ts`)의 잔재이며 실제로 존재하지 않는다.
+- 비밀번호는 **bcrypt 해시로만 저장**한다(`src/lib/password.ts`). 평문 저장 코드를 다시 넣지 말 것.
+  전환 전 평문 계정은 로그인 성공 시 자동으로 해시로 교체되고,
+  남은 계정은 `npm run db:hash-passwords`로 일괄 변환한다(멱등).
 
 ## 푸시 후 자동 QA (사용자 요청 없어도 필수)
 - 코드 변경을 푸시한 뒤에는 **항상** Playwright 클릭테스트(로그인·변경 기능 플로우·권한·회귀)를

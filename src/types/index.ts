@@ -108,7 +108,7 @@ export interface Account {
   id: string;
   name: string;
   email: string;
-  password: string; // 데모: 평문 저장(DB 미연동). 실서비스에서는 해시 필요.
+  password: string; // bcrypt 해시 (src/lib/password.ts). 클라이언트로 내려보내지 않는다.
   role: string; // ROLES 키 (admin/asset_manager/user/auditor) — 표시용 라벨
   permissions: string[]; // 접근 가능한 메뉴 키 목록
   active: boolean;
