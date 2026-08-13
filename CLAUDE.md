@@ -17,6 +17,9 @@
 - 인증: 로그인(/) + JWT 쿠키 세션 + `src/middleware.ts`가 메뉴별 권한 강제
   (단, `/api/sheets/*`는 구글시트 IMPORTDATA 연동을 위해, `/api/health`는 로그인 불가 상황 진단을 위해
    공개 유지 — 인증 뒤로 숨기지 말 것. health 응답에 접속정보/호스트를 담지 말 것)
+- `/api/health`는 keep-alive도 겸한다 — `vercel.json`의 cron이 매일 호출해 Supabase 무료 플랜의
+  자동 일시정지를 막는다. **엔드포인트의 DB 쿼리를 없애면 효과가 사라진다.**
+  cron은 **Production 배포에서만** 동작하므로 프로덕션 브랜치에 병합돼야 효력이 생긴다.
 - 디자인: 무광 세라믹(아이보리·민트) 토큰 기반 — `globals.css` :root + `tailwind.config.ts`(brand/pastel/ceramic)
 
 ## 푸시 전 체크

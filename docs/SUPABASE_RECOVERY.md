@@ -137,6 +137,29 @@ Vercel → 프로젝트 → **Settings → Environment Variables**
 
 ---
 
+## E-2. 자동 일시정지 예방 (keep-alive)
+
+무료 플랜은 일정 기간 요청이 없으면 프로젝트를 일시정지한다.
+이를 막기 위해 **매일 `/api/health` 를 호출하는 Vercel Cron** 을 걸어 두었다.
+
+```jsonc
+// vercel.json
+"crons": [{ "path": "/api/health", "schedule": "0 3 * * *" }]  // 매일 03:00 UTC = 12:00 KST
+```
+
+`/api/health` 는 `SELECT 1` 과 계정 수 조회를 실제로 실행하므로 DB 활동으로 잡힌다.
+
+**주의할 점**
+
+- **Cron 은 Production 배포에서만 동작한다.** Preview 배포에서는 실행되지 않으므로,
+  프로덕션 브랜치(`claude/asset-management-platform-pvcyfm`)에 병합해야 효력이 생긴다.
+- 동작 확인: Vercel → 프로젝트 → **Cron Jobs** 탭에서 다음 실행 시각과 최근 실행 결과를 볼 수 있다.
+- `/api/health` 에서 DB 쿼리를 없애면 keep-alive 효과도 사라진다(단순 200 응답은 DB 활동이 아니다).
+- Hobby 플랜의 cron 개수·주기 제한은 정책이 바뀔 수 있으니 Vercel 설정 화면에서 확인한다.
+- **이미 일시정지된 뒤에는 cron 이 깨우지 못한다.** 복구는 대시보드에서 수동으로 해야 한다(A 절).
+
+---
+
 ## F. 기존 데이터는 어떻게 되나
 
 - **삭제된 프로젝트는 되돌릴 수 없다**(백업이 없다면).
