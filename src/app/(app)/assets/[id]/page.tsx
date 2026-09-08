@@ -50,8 +50,6 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           <AssetActions
             assetId={asset.id}
             itemName={asset.itemName}
-            managementNo={asset.lockedManagementNo ?? asset.generatedManagementNo ?? "-"}
-            currentUserName={asset.currentUserName}
             onLoan={onLoan}
             isManager={isManager}
           />

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Loader2, ArrowUpRight, RotateCcw, X, Plus, ArrowLeft } from "lucide-react";
 import type { LoanStatus } from "@/types";
-import { TODAY } from "@/data/pools";
+import { todayKst } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, NativeSelect } from "@/components/ui/form-controls";
@@ -160,8 +160,8 @@ export function LoanApplicationForm({ preset }: { preset?: LoanTargetAsset | nul
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="대여일자" required><Input name="loanedAt" type="date" required defaultValue={TODAY} /></Field>
-          <Field label="반납 예정일" required><Input name="dueAt" type="date" required min={TODAY} /></Field>
+          <Field label="대여일자" required><Input name="loanedAt" type="date" required defaultValue={todayKst()} /></Field>
+          <Field label="반납 예정일" required><Input name="dueAt" type="date" required min={todayKst()} /></Field>
         </div>
         <Field label="사유" required><Input name="reason" required placeholder="예: 출장용 노트북 사용" /></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -255,7 +255,7 @@ export function ReturnApplicationForm({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="반납일자" required><Input name="returnedAt" type="date" required defaultValue={TODAY} /></Field>
+            <Field label="반납일자" required><Input name="returnedAt" type="date" required defaultValue={todayKst()} /></Field>
             <Field label="반납 후 상태">
               <NativeSelect name="afterStatus" defaultValue="보관">
                 <option>보관</option><option>수리</option><option>분실</option><option>폐기</option>

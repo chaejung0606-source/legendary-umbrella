@@ -3,10 +3,26 @@ import { filterAssets, getConsumables, getLaptopLoans, getPromoItemsWithStock, g
 
 export const dynamic = "force-dynamic";
 
-// 구글시트 IMPORTDATA 연동용 공개 CSV 엔드포인트.
+// 구글시트 IMPORTDATA 연동용 CSV 엔드포인트.
 // 구글시트 셀에 =IMPORTDATA("<이 URL>") 를 넣으면 구글이 주기적으로(약 1시간, 열 때마다)
 // 최신 CSV 를 가져가 자동 반영한다. 별도의 API 자격증명/서비스 계정이 필요 없다.
-// 자산/대여/재료 3종을 지원한다.
+// 구글 서버가 로그인 없이 가져가야 하므로 쿠키 인증을 걸 수 없다.
+//
+// 다만 loans 시트에는 대여자 이름·소속·사번/학번·전화번호 같은 개인정보가 들어간다.
+// 주소만 알면 누구나 받아갈 수 있으므로, 환경변수 SHEETS_ACCESS_KEY 를 설정하면
+// `?key=<값>` 이 일치할 때만 응답한다(IMPORTDATA 는 URL 에 키를 포함할 수 있다).
+// 미설정이면 지금까지처럼 공개로 동작한다 — 기존 시트 수식이 깨지지 않는다.
+
+function keyAllowed(req: NextRequest): boolean {
+  const expected = process.env.SHEETS_ACCESS_KEY;
+  if (!expected) return true; // 미설정 = 공개(기존 동작 유지)
+  const given = req.nextUrl.searchParams.get("key") ?? "";
+  // 길이가 달라도 짧게 끝나지 않도록 전체를 비교한다.
+  if (given.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -34,6 +50,13 @@ function csvResponse(csv: string): NextResponse {
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: string }> }) {
   const { kind } = await ctx.params;
+
+  if (!keyAllowed(req)) {
+    return NextResponse.json(
+      { error: "연동 키가 올바르지 않습니다. 설정 > 구글시트 연동에서 최신 수식을 다시 복사하세요." },
+      { status: 401 }
+    );
+  }
 
   if (kind === "assets") {
     // '사업단 자산관리 대장' 엑셀 양식의 컬럼 순서 그대로 내보낸다.

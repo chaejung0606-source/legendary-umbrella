@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { usingDefaultSecret } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ export async function GET() {
         ok: true,
         db: "연결됨",
         accounts, // 계정이 0 이면 로그인 가능한 사용자가 없다는 뜻
+        // 세션 서명 키 상태. "기본값(위험)" 이면 AUTH_SECRET 환경변수가 비어 있다는 뜻으로,
+        // 쿠키 위조가 가능한 상태다. 값 자체는 절대 노출하지 않는다.
+        auth: usingDefaultSecret ? "기본값(위험)" : "설정됨",
         ms: Date.now() - startedAt,
       },
       { headers: { "Cache-Control": "no-store" } }
@@ -32,6 +36,7 @@ export async function GET() {
       {
         ok: false,
         db: "연결 실패",
+        auth: usingDefaultSecret ? "기본값(위험)" : "설정됨",
         hint: "배포 환경의 DATABASE_URL · DIRECT_URL 을 확인하세요.",
         ms: Date.now() - startedAt,
       },

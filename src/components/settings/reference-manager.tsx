@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, Loader2, Hash, Building2, FolderTree, Search } fr
 import type { AssetMajorCategory, Building } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, NativeSelect } from "@/components/ui/form-controls";
+import { Field } from "@/components/ui/form-controls";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toaster";
 import {

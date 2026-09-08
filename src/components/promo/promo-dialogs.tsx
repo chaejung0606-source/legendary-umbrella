@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, PackagePlus, PackageMinus, ClipboardCheck, FileText, Ban } from "lucide-react";
 import type { PromoItemWithStock } from "@/types";
 import { PROMO_IN_TYPES, PROMO_OUT_TYPES, PROMO_OUT_PURPOSES } from "@/types";
-import { TODAY } from "@/data/pools";
+import { todayKst } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, NativeSelect } from "@/components/ui/form-controls";
@@ -127,7 +127,7 @@ export function PromoInboundDialog({ open, onClose, item }: { open: boolean; onC
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); submit(new FormData(e.currentTarget)); }} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="입고일자" required><Input name="date" type="date" required defaultValue={TODAY} /></Field>
+            <Field label="입고일자" required><Input name="date" type="date" required defaultValue={todayKst()} /></Field>
             <Field label="입고 유형" required>
               <NativeSelect name="type" defaultValue="추가입고" required>
                 {PROMO_IN_TYPES.filter((t) => t !== "조정증가").map((t) => <option key={t}>{t}</option>)}
@@ -183,7 +183,7 @@ export function PromoOutboundDialog({ open, onClose, item }: { open: boolean; on
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); submit(new FormData(e.currentTarget)); }} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="출고일자" required><Input name="date" type="date" required defaultValue={TODAY} /></Field>
+            <Field label="출고일자" required><Input name="date" type="date" required defaultValue={todayKst()} /></Field>
             <Field label="출고 유형" required>
               <NativeSelect name="type" defaultValue="출고" required>
                 {PROMO_OUT_TYPES.filter((t) => t !== "조정감소").map((t) => <option key={t}>{t}</option>)}
@@ -338,7 +338,7 @@ export function PromoRequestDialog({ open, onClose, items, userName }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="행사명"><Input name="eventName" placeholder="예: 신입생 오리엔테이션" /></Field>
-            <Field label="행사/사용일"><Input name="eventDate" type="date" min={TODAY} /></Field>
+            <Field label="행사/사용일"><Input name="eventDate" type="date" min={todayKst()} /></Field>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field label="신청자" required><Input name="requesterName" required defaultValue={userName} /></Field>

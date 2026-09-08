@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
-import { filterAssets, getConsumables, getMonthlyAcquisition, getCategoryRatio, getDashboardStats, getPromoItemsWithStock, getPromoTxns, getCategories, getBuildings, TODAY } from "@/data";
+import { todayKst } from "@/lib/date";
+import { filterAssets, getConsumables, getMonthlyAcquisition, getCategoryRatio, getDashboardStats, getPromoItemsWithStock, getPromoTxns, getCategories, getBuildings } from "@/data";
+import { verifySession, normalizePerms, SESSION_COOKIE } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
+
+// 내보내기 종류별로 필요한 메뉴 권한.
+// 미들웨어(src/middleware.ts)는 화면 경로만 보호하므로 /api/* 는 여기서 직접 인증한다.
+// (구글시트 연동용 /api/sheets 와 진단용 /api/health 만 의도적으로 공개다.)
+const REQUIRED_PERM: Record<string, string> = {
+  assets: "assets",
+  "asset-template": "assets",
+  consumables: "consumables",
+  promo: "promo",
+  "promo-ledger": "promo",
+  report: "dashboard",
+};
 
 // 자산/소모품/리포트를 실제 .xlsx 파일로 내려준다.
 function sheetFromRows(rows: Record<string, unknown>[]): XLSX.WorkSheet {
@@ -22,6 +36,19 @@ function workbookResponse(wb: XLSX.WorkBook, fileName: string): NextResponse {
 export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: string }> }) {
   const { kind } = await ctx.params;
   const sp = req.nextUrl.searchParams;
+
+  // ── 인증/권한 ── 원장 전체가 담긴 파일이므로 로그인 + 해당 메뉴 권한을 요구한다.
+  const needed = REQUIRED_PERM[kind];
+  if (!needed) {
+    return NextResponse.json({ error: `지원하지 않는 내보내기 유형: ${kind}` }, { status: 400 });
+  }
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!session) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+  if (!normalizePerms(session.perms).includes(needed)) {
+    return NextResponse.json({ error: "이 자료를 내려받을 권한이 없습니다." }, { status: 403 });
+  }
 
   if (kind === "assets") {
     const result = await filterAssets({
@@ -45,7 +72,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "자산원장");
-    return workbookResponse(wb, `자산원장_${TODAY}.xlsx`);
+    return workbookResponse(wb, `자산원장_${todayKst()}.xlsx`);
   }
 
   if (kind === "consumables") {
@@ -56,7 +83,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "소모품재고");
-    return workbookResponse(wb, `소모품재고_${TODAY}.xlsx`);
+    return workbookResponse(wb, `소모품재고_${todayKst()}.xlsx`);
   }
 
   if (kind === "report") {
@@ -84,7 +111,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
       sheetFromRows((await getCategoryRatio()).map((c) => ({ 대분류: c.name, 자산수: c.count, 취득금액: c.amount }))),
       "대분류별"
     );
-    return workbookResponse(wb, `자산리포트_${TODAY}.xlsx`);
+    return workbookResponse(wb, `자산리포트_${todayKst()}.xlsx`);
   }
 
   if (kind === "asset-template") {
@@ -94,7 +121,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
 
     const example = {
       지출문서: "지출-2026-001", 관리기관: "SDU사업단", 대분류: "사무용장비", 중분류: "컴퓨터",
-      "취득날짜(YYYY-MM-DD)": TODAY, "품명(필수)": "노트북컴퓨터", 규격: "16GB/512GB SSD",
+      "취득날짜(YYYY-MM-DD)": todayKst(), "품명(필수)": "노트북컴퓨터", 규격: "16GB/512GB SSD",
       취득단가: 1450000, 번호: 1, 장소: "집현관(제2도서관)", 호실: "102호", 건축물코드: "B0000142",
       사용처: "홍길동", RFID번호: "", 태그상태: "미지정", 비고: "예시 행 — 삭제 후 사용",
     };
@@ -134,7 +161,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
       ]),
       "작성안내"
     );
-    return workbookResponse(wb, `자산등록양식_${TODAY}.xlsx`);
+    return workbookResponse(wb, `자산등록양식_${todayKst()}.xlsx`);
   }
 
   if (kind === "promo") {
@@ -147,7 +174,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "홍보물품현황");
-    return workbookResponse(wb, `홍보물품현황_${TODAY}.xlsx`);
+    return workbookResponse(wb, `홍보물품현황_${todayKst()}.xlsx`);
   }
 
   if (kind === "promo-ledger") {
@@ -168,7 +195,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
       });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), "수불관리대장");
-    return workbookResponse(wb, `홍보물품_수불관리대장_${TODAY}.xlsx`);
+    return workbookResponse(wb, `홍보물품_수불관리대장_${todayKst()}.xlsx`);
   }
 
   return NextResponse.json({ error: `지원하지 않는 내보내기 유형: ${kind}` }, { status: 400 });

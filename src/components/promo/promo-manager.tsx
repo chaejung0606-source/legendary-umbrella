@@ -129,10 +129,10 @@ export function PromoManager({ items, txns, requests, isManager, userName }: {
         </TabsList>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" asChild>
-            <a href="/api/export/promo"><Download className="h-4 w-4" /> 현황 엑셀</a>
+            <a href="/api/export/promo" download><Download className="h-4 w-4" /> 현황 엑셀</a>
           </Button>
           <Button size="sm" variant="outline" asChild>
-            <a href="/api/export/promo-ledger"><Download className="h-4 w-4" /> 대장 엑셀</a>
+            <a href="/api/export/promo-ledger" download><Download className="h-4 w-4" /> 대장 엑셀</a>
           </Button>
           <Button size="sm" onClick={() => setRequestOpen(true)}><FileText className="h-4 w-4" /> 출고 신청</Button>
           {isManager && (

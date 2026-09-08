@@ -3,8 +3,9 @@ import type { UsageType, AssetStatus, TagStatus } from "@/types";
 // 더미 생성기가 사용하는 어휘/규칙. 데이터 자체는 generate.ts 에서 만들고,
 // 모든 지표는 selector 에서 계산한다(하드코딩 금지).
 
-// 기준 시점 (제공된 컨텍스트의 오늘) — 결정성 확보용.
-export const TODAY = "2026-06-30";
+// 더미/시드 데이터 생성의 기준 시점 — **결정성 확보 전용**.
+// 런타임의 "오늘"로 쓰지 말 것. 실제 오늘 날짜는 src/lib/date.ts 의 todayKst() 를 쓴다.
+export const SEED_TODAY = "2026-06-30";
 
 export const GEN_SEED = 20260630;
 

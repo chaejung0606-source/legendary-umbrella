@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Laptop, Boxes, Clock, RotateCcw } from "lucide-react";
+import { ArrowLeftRight, Laptop, Clock, RotateCcw } from "lucide-react";
 import { getLaptopLoans, getReturnDueLaptops, filterAssets } from "@/data";
 import { formatNumber } from "@/lib/format";
 import { PageHeader } from "@/components/layout/page-header";

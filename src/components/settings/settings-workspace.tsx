@@ -21,12 +21,14 @@ export function SettingsWorkspace({
   categories,
   buildings,
   appSettings,
+  sheetsAccessKey,
   canEditSettings,
 }: {
   accounts: Account[];
   categories: AssetMajorCategory[];
   buildings: Building[];
   appSettings: Record<string, string>;
+  sheetsAccessKey: string;
   canEditSettings: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("accounts");
@@ -64,7 +66,7 @@ export function SettingsWorkspace({
         </SoftCard>
       )}
 
-      {tab === "sheets" && <GoogleSheetsCard settings={appSettings} canEdit={canEditSettings} />}
+      {tab === "sheets" && <GoogleSheetsCard settings={appSettings} accessKey={sheetsAccessKey} canEdit={canEditSettings} />}
 
       {tab === "rfid" && (
         <SoftCard>

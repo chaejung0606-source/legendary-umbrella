@@ -233,6 +233,9 @@ export interface LoanableAsset {
   place: string;
 }
 export async function searchLoanableAssetsAction(q: string): Promise<LoanableAsset[]> {
+  // 서버 액션은 화면 경로와 무관하게 호출될 수 있으므로(미들웨어로 못 막는다)
+  // 조회 액션도 로그인 여부를 직접 확인한다. 비로그인 호출은 빈 결과.
+  if ("error" in (await requireLogin())) return [];
   const query = q.trim();
   if (!query) return [];
   const [rows, loans] = await Promise.all([

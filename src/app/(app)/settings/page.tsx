@@ -24,6 +24,7 @@ export default async function SettingsPage() {
         categories={categories}
         buildings={buildings}
         appSettings={appSettings}
+        sheetsAccessKey={process.env.SHEETS_ACCESS_KEY ?? ""}
         canEditSettings={canEditSettings}
       />
     </div>

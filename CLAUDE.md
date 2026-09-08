@@ -17,12 +17,20 @@
 - 인증: 로그인(/) + JWT 쿠키 세션 + `src/middleware.ts`가 메뉴별 권한 강제
   (단, `/api/sheets/*`는 구글시트 IMPORTDATA 연동을 위해, `/api/health`는 로그인 불가 상황 진단을 위해
    공개 유지 — 인증 뒤로 숨기지 말 것. health 응답에 접속정보/호스트를 담지 말 것)
+- **미들웨어 matcher 는 화면 경로만 보호한다.** `/api/*` 와 서버 액션은 각자 세션을 직접 확인해야 한다
+  (`/api/export/*`는 로그인+메뉴 권한, 서버 액션은 `requireManager()`/`requireLogin()`).
+  조회만 하는 액션도 예외 없이 — 서버 액션은 화면 경로와 무관하게 호출될 수 있다.
+- `/api/sheets/*`는 구조상 공개지만 대여 시트에 개인정보가 있다. `SHEETS_ACCESS_KEY` 를 설정하면
+  `?key=` 가 맞는 요청만 통과하고, 설정 화면의 IMPORTDATA 수식에도 키가 자동으로 붙는다.
+- **"오늘"은 반드시 `src/lib/date.ts` 의 `todayKst()`** 를 쓴다. `pools.SEED_TODAY` 는 더미/시드
+  생성의 결정성 확보 전용 고정값이므로 런타임 저장·표시에 쓰면 날짜가 과거에 멈춘다.
 - `/api/health`는 keep-alive도 겸한다 — `vercel.json`의 cron이 매일 호출해 Supabase 무료 플랜의
   자동 일시정지를 막는다. **엔드포인트의 DB 쿼리를 없애면 효과가 사라진다.**
   cron은 **Production 배포에서만** 동작하므로 프로덕션 브랜치에 병합돼야 효력이 생긴다.
 - 디자인: 무광 세라믹(아이보리·민트) 토큰 기반 — `globals.css` :root + `tailwind.config.ts`(brand/pastel/ceramic)
 
 ## 푸시 전 체크
+- `npm run lint` 통과(경고 0 유지) · `npx tsc --noEmit` 통과
 - `npm run build` 통과(로컬 DB 필요 시 Postgres 기동) · 주요 화면 콘솔 에러/404 없음
 - `.env` 커밋 금지
 - 시드 계정은 **관리자 1개뿐**이며 계정 테이블이 비어 있을 때만 생성된다

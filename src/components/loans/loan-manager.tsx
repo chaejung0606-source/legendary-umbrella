@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Search, ArrowUpRight, RotateCcw, Eye, AlertTriangle, Laptop, Boxes, FilePlus2 } from "lucide-react";
 import type { LaptopLoan } from "@/types";
 import { formatDate } from "@/lib/format";
-import { TODAY } from "@/data/pools";
+import { todayKst, daysBetween } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoanStatusBadge, StatusBadge } from "@/components/badges/status-badge";
@@ -19,7 +19,7 @@ export interface LoanCandidate {
 
 function dueSoon(dueAt?: string | null) {
   if (!dueAt) return false;
-  return (new Date(dueAt).getTime() - new Date(TODAY).getTime()) / 86400000 <= 3;
+  return daysBetween(todayKst(), dueAt) <= 3;
 }
 
 // 전체 자산 대여/반납: 독립 대여·반납 신청 버튼 + 대여 중 목록 + 검색 + 반납 이력.

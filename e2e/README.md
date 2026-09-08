@@ -40,6 +40,10 @@ node e2e/session-recovery.e2e.mjs
 
 # 비밀번호 해싱 (13 케이스) — 평문 계정의 자동 전환 + 신규 계정 해시 저장 확인
 node e2e/password-hashing.e2e.mjs
+
+# API 가드/날짜 (32 케이스) — /api/export 인증·권한, /api/sheets·/api/health 공개 유지,
+#                              화면 날짜 기본값이 실제 오늘(KST)인지
+node e2e/api-guard.e2e.mjs
 ```
 
 ### 환경변수(선택)
@@ -73,6 +77,16 @@ psql "$DATABASE_URL" -f e2e/cleanup.sql
 - **I** 소모품 조회 + 입·출고 가능 + 물품등록·재고조정 숨김
 - **J** 반응형 뷰포트(360/390/768/1366) 무횡스크롤
 - **K** 로그아웃 후 보호 경로 차단
+
+### api-guard.e2e.mjs
+
+- **A** 비로그인 상태에서 `/api/export/*` 6종 전부 401
+- **B** `/api/sheets/*` 4종과 `/api/health` 는 공개 유지(구글시트 IMPORTDATA 회귀 방지)
+- **C** 관리자 로그인 시 6종 모두 xlsx 다운로드 성공
+- **D** 권한을 대시보드로 좁힌 계정은 자산·소모품·홍보 내보내기 403
+- **E** 알 수 없는 종류는 400
+- **F** 대여/반납 신청서 날짜 기본값·최소값과 대시보드 '이번 달'이 실제 오늘(KST) 기준
+- **G** `/api/health` 가 세션 서명키 상태를 알리되 접속정보는 노출하지 않음
 
 ### session-recovery.e2e.mjs
 

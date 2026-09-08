@@ -2,9 +2,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { Boxes, Coins, ScanLine, Laptop, Wrench, Sparkles, PlusCircle, ArrowLeftRight, ChevronRight, Clock } from "lucide-react";
 import {
-  getDashboardStats, getMonthlyAcquisition, getCategoryRatio, getRecentAssets, getReturnDueLaptops, getRfidCheckAssets, TODAY,
+  getDashboardStats, getMonthlyAcquisition, getCategoryRatio, getRecentAssets, getReturnDueLaptops, getRfidCheckAssets,
 } from "@/data";
 import { formatCurrency, formatCurrencyShort, formatNumber, formatDate } from "@/lib/format";
+import { thisMonthKst } from "@/lib/date";
 import { verifySession, SESSION_COOKIE } from "@/lib/session";
 import { HeroCard } from "@/components/cards/hero-card";
 import { StatCard } from "@/components/cards/stat-card";
@@ -52,7 +53,7 @@ export default async function DashboardPage() {
         <StatCard label="RFID 미등록" value={formatNumber(stats.rfidUnregistered)} sub={`등록률 ${Math.round((1 - stats.rfidUnregistered / stats.totalAssets) * 100)}%`} icon={ScanLine} tone="coral" />
         <StatCard label="노트북 사용/대여 중" value={formatNumber(stats.laptopsOut)} sub="45대 중" icon={Laptop} tone="sky" />
         <StatCard label="점검 필요 자산" value={formatNumber(stats.needsInspection)} sub="점검·수리" icon={Wrench} tone="cream" />
-        <StatCard label="이번 달 신규" value={formatNumber(stats.newThisMonth)} sub={`${TODAY.slice(0, 7)} 기준`} icon={Sparkles} tone="mint" />
+        <StatCard label="이번 달 신규" value={formatNumber(stats.newThisMonth)} sub={`${thisMonthKst()} 기준`} icon={Sparkles} tone="mint" />
       </div>
 
       {/* 차트 */}

@@ -5,7 +5,7 @@
  * 사용: npx tsx scripts/build-promo-seed.ts <관리대장.xlsx> <수불관리대장.xlsx>
  * 병합 규칙: 물품명 기준 병합, 구분코드는 파일2 우선, 없으면 A부터 미사용 문자 자동 부여.
  */
-import { readFileSync, writeFileSync } from "fs";
+import { writeFileSync } from "fs";
 import { join } from "path";
 import * as XLSX from "xlsx";
 

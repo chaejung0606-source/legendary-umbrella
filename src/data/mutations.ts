@@ -4,7 +4,7 @@ import type {
 } from "@/types";
 import { USAGE_TYPES } from "@/types";
 import { prisma } from "@/lib/prisma";
-import { TODAY } from "./pools";
+import { todayKst } from "@/lib/date";
 import { generateManagementNumber } from "@/lib/management-number";
 import { classifyUsage } from "@/lib/usage";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -143,7 +143,7 @@ export async function moveAsset(
 ): Promise<Asset | null> {
   const existing = await prisma.asset.findUnique({ where: { id } });
   if (!existing) return null;
-  const memo = move.note ? [existing.memo, `[이동 ${TODAY}] ${move.note}`].filter(Boolean).join("\n") : existing.memo;
+  const memo = move.note ? [existing.memo, `[이동 ${todayKst()}] ${move.note}`].filter(Boolean).join("\n") : existing.memo;
   const asset = await prisma.asset.update({
     where: { id },
     data: {
@@ -210,7 +210,7 @@ export async function loanAsset(assetId: string, input: LoanInput): Promise<Lapt
         userPhone: input.userPhone || null,
         reason: input.reason || null,
         loanManager: input.loanManager || null,
-        loanedAt: input.loanedAt || TODAY,
+        loanedAt: input.loanedAt || todayKst(),
         dueAt: input.dueAt,
         signature: input.signature || null,
         returnedAt: null,
@@ -235,7 +235,7 @@ export async function returnAsset(assetId: string, input: ReturnInput): Promise<
       data: {
         status: input.afterStatus,
         dueAt: null,
-        returnedAt: input.returnedAt || TODAY,
+        returnedAt: input.returnedAt || todayKst(),
         returnerName: input.returnerName,
         returnerAffiliation: input.returnerAffiliation || null,
         returnerPhone: input.returnerPhone || null,
@@ -289,7 +289,7 @@ export async function createConsumableItem(input: ConsumableItemInput): Promise<
       location: input.location?.trim() || null,
       roomName: input.roomName?.trim() || null,
       expenditureDocument: input.expenditureDocument?.trim() || null,
-      lastInboundAt: currentQty > 0 ? TODAY : null,
+      lastInboundAt: currentQty > 0 ? todayKst() : null,
       status: consumableStatus(currentQty, safetyQty),
     },
   });
@@ -299,19 +299,28 @@ export async function createConsumableItem(input: ConsumableItemInput): Promise<
 export async function consumableTxn(
   itemId: string, type: "in" | "out" | "adjust", qty: number,
 ): Promise<{ item: ConsumableItem } | { error: string }> {
-  const item = await prisma.consumableItem.findUnique({ where: { id: itemId } });
-  if (!item) return { error: "품목을 찾을 수 없습니다." };
-  let currentQty = item.currentQty;
-  const data: { currentQty: number; status: string; lastInboundAt?: string; lastOutboundAt?: string } = { currentQty, status: item.status };
-  if (type === "in") { currentQty += qty; data.lastInboundAt = TODAY; }
-  else if (type === "out") {
-    if (qty > currentQty) return { error: `현재 재고(${currentQty}${item.unit})보다 많은 수량은 출고할 수 없습니다.` };
-    currentQty -= qty; data.lastOutboundAt = TODAY;
-  } else currentQty = qty;
-  data.currentQty = currentQty;
-  data.status = consumableStatus(currentQty, item.safetyQty);
-  const updated = await prisma.consumableItem.update({ where: { id: itemId }, data });
-  return { item: updated as unknown as ConsumableItem };
+  // 재고 조회 → 검증 → 갱신을 한 트랜잭션(Serializable)으로 묶는다.
+  // 두 사람이 동시에 출고하면 각자 옛 재고를 보고 검증을 통과해 재고가 음수가 될 수 있다.
+  // 홍보물품 수불(promoTxn)과 같은 격리 수준을 쓴다.
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      const item = await tx.consumableItem.findUnique({ where: { id: itemId } });
+      if (!item) throw new Error("품목을 찾을 수 없습니다.");
+      let currentQty = item.currentQty;
+      const data: { currentQty: number; status: string; lastInboundAt?: string; lastOutboundAt?: string } = { currentQty, status: item.status };
+      if (type === "in") { currentQty += qty; data.lastInboundAt = todayKst(); }
+      else if (type === "out") {
+        if (qty > currentQty) throw new Error(`현재 재고(${currentQty}${item.unit})보다 많은 수량은 출고할 수 없습니다.`);
+        currentQty -= qty; data.lastOutboundAt = todayKst();
+      } else currentQty = qty;
+      data.currentQty = currentQty;
+      data.status = consumableStatus(currentQty, item.safetyQty);
+      return tx.consumableItem.update({ where: { id: itemId }, data });
+    }, { isolationLevel: "Serializable" });
+    return { item: updated as unknown as ConsumableItem };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "재고 처리 중 오류가 발생했습니다." };
+  }
 }
 
 // ─── 엑셀 가져오기 반영 (원장 교체) ───
@@ -331,7 +340,7 @@ export async function commitImport(payload: ImportCommitPayload): Promise<{ asse
     const status: LoanStatus = n.status === "직원사용" ? "직원사용" : "보관";
     return [{
       id: `loan-${asset.id}`, assetId: asset.id, managementNo: n.managementNo, itemName: `사업단 노트북 #${i + 1}`,
-      status, userName: n.holder ?? null, loanedAt: n.holder ? TODAY : null, dueAt: null, returnedAt: null, note: null, isNotebook: true,
+      status, userName: n.holder ?? null, loanedAt: n.holder ? todayKst() : null, dueAt: null, returnedAt: null, note: null, isNotebook: true,
     }];
   });
 
@@ -638,7 +647,7 @@ export async function cancelPromoTxn(txnId: string, reason: string, by?: string 
       await tx.promoTxn.update({ where: { id: txnId }, data: { status: "취소됨", cancelReason: reason.trim() } });
       await tx.promoTxn.create({
         data: {
-          id: uid(), itemId: orig.itemId, date: TODAY, type: orig.direction > 0 ? "입고취소" : "출고취소",
+          id: uid(), itemId: orig.itemId, date: todayKst(), type: orig.direction > 0 ? "입고취소" : "출고취소",
           qty: orig.qty, direction: -orig.direction, balanceAfter: after,
           purpose: `취소: ${orig.type} ${orig.qty}건 (${reason.trim()})`, cancelOfId: orig.id,
           status: "정상", createdBy: by || null, createdAt: nowIso(),
@@ -663,7 +672,7 @@ export async function adjustPromoStock(
   const diff = actualQty - balance;
   if (diff === 0) return { error: "시스템 재고와 실제 재고가 같아 조정할 내용이 없습니다." };
   const result = await promoTxn({
-    itemId, date: TODAY, type: diff > 0 ? "조정증가" : "조정감소", qty: Math.abs(diff),
+    itemId, date: todayKst(), type: diff > 0 ? "조정증가" : "조정감소", qty: Math.abs(diff),
     purpose: `재고 실사 조정 (시스템 ${balance} → 실제 ${actualQty}) — ${reason.trim()}`, createdBy: by,
   });
   if ("error" in result) return result;
@@ -731,7 +740,7 @@ export async function completePromoRequest(id: string, managerName?: string | nu
   if (!req) return { error: "신청을 찾을 수 없습니다." };
   if (req.status !== "승인") return { error: `승인된 신청만 출고 처리할 수 있습니다 (현재: ${req.status}).` };
   const txn = await promoTxn({
-    itemId: req.itemId, date: TODAY, type: "출고", qty: req.qty,
+    itemId: req.itemId, date: todayKst(), type: "출고", qty: req.qty,
     purpose: `[${req.outType}] ${req.purpose}`, eventName: req.eventName,
     takerName: req.requesterName, receiverName: req.requesterAffiliation, manager: managerName,
     createdBy: managerName,

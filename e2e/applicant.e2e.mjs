@@ -21,6 +21,10 @@ const PW = process.env.E2E_PW || 'test1234';
 const CHROME = process.env.E2E_CHROMIUM || '/opt/pw-browsers/chromium';
 const TAG = '[E2E-TEST]';
 
+// 오늘(KST) 기준 n일 뒤 "YYYY-MM-DD" — 앱의 todayKst() 와 같은 기준.
+const kstToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const kstPlusDays = (n) => { const [y, m, d] = kstToday().split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+
 const results = [], fails = [];
 function log(name, ok, detail = '') {
   results.push(ok); if (!ok) fails.push(name);
@@ -125,7 +129,8 @@ try {
   if ((await form.locator('ul button.w-full').count()) > 0) await form.locator('ul button.w-full').first().click();
   await page.waitForTimeout(300);
   log('G3 복수 자산 선택', (await form.locator('button[aria-label="선택 해제"]').count()) >= 1);
-  await form.locator('input[name="dueAt"]').fill('2026-08-31');
+  // 반납 예정일은 오늘(KST) 이후여야 한다(input 의 min). 고정 날짜를 쓰면 시간이 지나 테스트가 깨진다.
+  await form.locator('input[name="dueAt"]').fill(kstPlusDays(14));
   await form.locator('input[name="reason"]').fill(`${TAG} 자동화 테스트 대여`);
   await form.locator('input[name="userName"]').fill(`${TAG} 대여자`);
   await form.locator('input[name="userAffiliation"]').fill('사업단');

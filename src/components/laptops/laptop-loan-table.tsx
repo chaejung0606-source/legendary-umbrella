@@ -3,13 +3,13 @@ import Link from "next/link";
 import { RotateCcw, ArrowUpRight, Eye, AlertTriangle } from "lucide-react";
 import type { LaptopLoan } from "@/types";
 import { formatDate } from "@/lib/format";
-import { TODAY } from "@/data/pools";
+import { todayKst, daysBetween } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { LoanStatusBadge } from "@/components/badges/status-badge";
 
 function dueSoon(dueAt?: string | null) {
   if (!dueAt) return false;
-  return (new Date(dueAt).getTime() - new Date(TODAY).getTime()) / 86400000 <= 3;
+  return daysBetween(todayKst(), dueAt) <= 3;
 }
 
 // 노트북 대여현황 표. 상단에 "사용/대여 중", 아래에 "보관·기타". 처리 시 대장 양식 신청서 사용.

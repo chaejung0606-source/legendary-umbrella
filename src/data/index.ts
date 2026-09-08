@@ -4,7 +4,7 @@ import type {
   Account, AssetMajorCategory, Building, PromoItem, PromoTxn, PromoRequest, PromoItemWithStock,
 } from "@/types";
 import { prisma } from "@/lib/prisma";
-import { TODAY } from "./pools";
+import { todayKst, thisMonthKst, daysBetween } from "@/lib/date";
 
 // DB(Postgres)에서 전체 데이터셋을 로드한다. React cache 로 한 렌더/요청 내에서 1회만 조회.
 // 스키마 필드가 앱 타입과 1:1 이므로 캐스팅으로 브리지한다.
@@ -91,7 +91,7 @@ export async function getActiveAssets(): Promise<Asset[]> {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const d = await loadData();
   const assets = live(d.assets);
-  const month = TODAY.slice(0, 7);
+  const month = thisMonthKst();
   return {
     totalAssets: assets.length,
     totalAcquisition: assets.reduce((s, a) => s + a.unitPrice, 0),
@@ -105,7 +105,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 export async function getMonthlyAcquisition(monthsBack = 12): Promise<MonthlyAcquisitionPoint[]> {
   const d = await loadData();
   const assets = live(d.assets);
-  const [ty, tm] = TODAY.split("-").map(Number);
+  const [ty, tm] = todayKst().split("-").map(Number);
   const points: MonthlyAcquisitionPoint[] = [];
   for (let i = monthsBack - 1; i >= 0; i--) {
     const dt = new Date(Date.UTC(ty, tm - 1 - i, 1));
@@ -160,7 +160,7 @@ export async function getReturnDueLaptops(withinDays = 7): Promise<LaptopLoan[]>
   const d = await loadData();
   return d.laptopLoans
     .filter((l) => l.dueAt)
-    .filter((l) => (new Date(l.dueAt!).getTime() - new Date(TODAY).getTime()) / 86400000 <= withinDays)
+    .filter((l) => daysBetween(todayKst(), l.dueAt!) <= withinDays)
     .sort((a, b) => (a.dueAt ?? "").localeCompare(b.dueAt ?? ""));
 }
 export async function getLoanForAsset(assetId: string): Promise<LaptopLoan | undefined> {
@@ -264,4 +264,4 @@ export async function getPromoItemById(id: string): Promise<PromoItemWithStock |
   return item ? computePromoStock(item, txns, requests) : undefined;
 }
 
-export { TODAY };
+export { todayKst };

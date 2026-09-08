@@ -14,15 +14,11 @@ import { moveAssetAction } from "@/app/actions";
 export function AssetActions({
   assetId,
   itemName,
-  managementNo,
-  currentUserName,
   onLoan,
   isManager = false,
 }: {
   assetId: string;
   itemName: string;
-  managementNo: string;
-  currentUserName?: string | null;
   onLoan: boolean; // 현재 대여/사용 중 여부
   isManager?: boolean; // 수정·이동은 관리자만
 }) {

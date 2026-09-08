@@ -21,7 +21,7 @@ const SHEET_DEFS = [
  * 구글시트 연동 카드 — API/서비스계정 없이 IMPORTDATA 로 자동 반영.
  * 시트 URL·공개 주소는 하드코딩하지 않고 앱 설정(DB)에서 읽어오며, 여기서 바로 수정할 수 있다.
  */
-export function GoogleSheetsCard({ settings, canEdit }: { settings: Record<string, string>; canEdit: boolean }) {
+export function GoogleSheetsCard({ settings, accessKey, canEdit }: { settings: Record<string, string>; accessKey: string; canEdit: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [pending, startTransition] = useTransition();
@@ -123,7 +123,8 @@ export function GoogleSheetsCard({ settings, canEdit }: { settings: Record<strin
 
       <div className="space-y-2.5">
         {SHEET_DEFS.map((d) => {
-          const url = `${baseUrl}/api/sheets/${d.key}`;
+          // SHEETS_ACCESS_KEY 가 설정돼 있으면 수식 URL 에도 키를 붙여야 구글이 받아갈 수 있다.
+          const url = `${baseUrl}/api/sheets/${d.key}${accessKey ? `?key=${encodeURIComponent(accessKey)}` : ""}`;
           const formula = `=IMPORTDATA("${url}")`;
           const Icon = d.icon;
           return (

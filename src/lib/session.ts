@@ -1,11 +1,27 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { MENU_PERMISSIONS } from "./menus";
 
-// 데모용 세션(JWT) — DB/실인증 없이 인메모리 계정 기반. 쿠키에 서명된 토큰 저장.
-// AUTH_SECRET 미설정 시 개발용 기본 시크릿 사용(운영에서는 반드시 교체).
-const secret = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-only-insecure-secret-change-me-in-production-please"
-);
+// 세션(JWT) — 서명된 쿠키에 계정/권한을 담는다.
+//
+// AUTH_SECRET 이 없으면 개발용 기본 시크릿으로 떨어진다. 이 값은 저장소에 그대로
+// 적혀 있으므로, 배포 환경에서 이 상태가 되면 **누구나 관리자 세션 쿠키를 위조**할 수 있다.
+// 운영을 중단시키지 않기 위해 여기서 막지는 않되, 아래 두 곳에서 드러나게 한다.
+//   - 서버 로그: 프로덕션에서 기본값이면 시작 시 1회 경고
+//   - /api/health: auth 필드로 "기본값(위험)" 노출 → 로그인 없이 점검 가능
+const DEV_FALLBACK_SECRET = "dev-only-insecure-secret-change-me-in-production-please";
+
+/** 배포 환경인데 AUTH_SECRET 이 비어 있어 개발용 기본 시크릿을 쓰고 있는 상태 */
+export const usingDefaultSecret =
+  process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET;
+
+if (usingDefaultSecret) {
+  console.error(
+    "[보안 경고] AUTH_SECRET 이 설정되지 않아 저장소에 공개된 기본 시크릿으로 세션에 서명하고 있습니다. " +
+      "세션 쿠키 위조가 가능하니 Vercel 환경변수에 AUTH_SECRET 을 즉시 설정하세요 (openssl rand -base64 32)."
+  );
+}
+
+const secret = new TextEncoder().encode(process.env.AUTH_SECRET || DEV_FALLBACK_SECRET);
 
 export const SESSION_COOKIE = "sadan_session";
 
