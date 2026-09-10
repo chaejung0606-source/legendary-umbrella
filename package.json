@@ -15,7 +15,8 @@
     "db:hash-passwords": "tsx scripts/hash-passwords.ts",
     "db:seed-e2e": "tsx scripts/seed-e2e-account.ts",
     "db:studio": "prisma studio",
-    "verify:import": "tsx scripts/verify-import.ts"
+    "verify:import": "tsx scripts/verify-import.ts",
+    "e2e:smoke": "node e2e/smoke.e2e.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

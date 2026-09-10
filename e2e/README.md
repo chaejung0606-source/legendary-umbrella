@@ -44,6 +44,11 @@ node e2e/password-hashing.e2e.mjs
 # API 가드/날짜 (32 케이스) — /api/export 인증·권한, /api/sheets·/api/health 공개 유지,
 #                              화면 날짜 기본값이 실제 오늘(KST)인지
 node e2e/api-guard.e2e.mjs
+
+# 배포 스모크 (61 케이스, 읽기 전용) — 프리뷰/프로덕션 **배포 주소**에 대고 돈다.
+#   DB 에 직접 붙지 않고, 데이터를 만들지도 않는다(운영에 돌려도 안전).
+E2E_BASE=https://sadan-asset-platform.vercel.app node e2e/smoke.e2e.mjs
+E2E_BASE=https://<preview>.vercel.app npm run e2e:smoke
 ```
 
 ### 환경변수(선택)
@@ -54,6 +59,11 @@ node e2e/api-guard.e2e.mjs
 | `E2E_EMAIL` | `applicant@e2e.local` | 신청자 계정 |
 | `E2E_PW` | `test1234` | 신청자 비밀번호 |
 | `E2E_CHROMIUM` | `/opt/pw-browsers/chromium` | Chromium 실행 경로 |
+| `E2E_ADMIN` · `E2E_ADMIN_PW` | `admin@sadan.local` / `admin1234` | 스모크·API 가드의 관리자 계정. 빈 문자열이면 스모크의 로그인 이후 항목은 SKIP |
+| `E2E_SHEETS_KEY` | (없음) | 배포에 `SHEETS_ACCESS_KEY` 가 있으면 같은 값 — 키 없는 요청 401·키 있는 요청 200 확인 |
+| `E2E_EXPECT_VERSION` | `package.json` 의 version | 로그인 화면 하단 버전 기대값(`skip` 이면 검사 생략) |
+| `E2E_TIMEOUT_MS` | `30000` | 스모크의 원격 응답 대기(Vercel 콜드스타트 감안) |
+| `E2E_PROXY` | `HTTPS_PROXY` 값 | 프록시 뒤에서 돌릴 때(빈 문자열이면 프록시 없이) |
 
 ## 테스트 데이터 정리
 
@@ -77,6 +87,25 @@ psql "$DATABASE_URL" -f e2e/cleanup.sql
 - **I** 소모품 조회 + 입·출고 가능 + 물품등록·재고조정 숨김
 - **J** 반응형 뷰포트(360/390/768/1366) 무횡스크롤
 - **K** 로그아웃 후 보호 경로 차단
+
+### smoke.e2e.mjs (배포 스모크 · 읽기 전용)
+
+배포된 주소에 대고 "제대로 열리는지"를 가른다. 서버로 보내는 POST 는 로그인/로그아웃 서버 액션 둘뿐이며
+대여·수불·계정 등 어떤 데이터도 만들지 않는다. 결과는 PASS / FAIL / SKIP 로 나오고 FAIL 이 하나라도 있으면
+종료 코드 1.
+
+- **A** `/api/health` — DB 연결(200 · ok:true), `AUTH_SECRET` 설정됨, 접속정보 미노출, 계정 ≥ 1, no-store
+- **B** 로그인 화면 — 폼 표시·Application error 없음, 표시 버전 = 저장소 버전, 콘솔/페이지 오류·4xx 없음, `/welcome` → `/`
+- **C** 비로그인 화면 경로 11종 → 307 `/?next=…`, 외부 `next` 로 서버 리다이렉트 없음
+- **D** `/api/export/*` 6종 401, 알 수 없는 종류 400, `/api/sheets/*` 4종 200 CSV(BOM) — `E2E_SHEETS_KEY` 가 있으면 키 없는 요청 401 도 확인
+- **E** 로그인 → 첫 허용 메뉴, Application error 없음(v3.2.0 회귀). **DB 가 죽어 있으면** 로그인 화면이 안내 문구로
+  남는지(E0)만 보고 이후는 SKIP
+- **F** 대여 신청서 대여일자·반납 예정일 최소값·반납 신청서 반납일자 = 오늘(KST), 대시보드 '이번 달 신규' = 이번 달
+- **G** 메뉴 7개 + 노트북 대여현황·자산 등록·대여/반납 신청서·자산 상세 — 200, 오류 문구·페이지 오류·4xx 없음
+  (권한 없는 메뉴는 SKIP)
+- **H** 로그인 상태에서 `/api/export/assets`·`report` xlsx
+- **I** 390px 폭에서 대시보드·자산·대여 신청서 무횡스크롤
+- **J** 로그아웃 → `/dashboard` 다시 307, 외부 `next` 는 로그인 뒤에도 무시(오픈 리다이렉트)
 
 ### api-guard.e2e.mjs
 

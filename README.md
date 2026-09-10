@@ -104,4 +104,5 @@ node e2e/manager-regression.e2e.mjs  # 관리자 회귀
 node e2e/session-recovery.e2e.mjs    # 세션 복구
 node e2e/password-hashing.e2e.mjs    # 비밀번호 해싱
 node e2e/api-guard.e2e.mjs           # API/서버액션 인증 가드
+E2E_BASE=https://<배포주소> npm run e2e:smoke   # 배포 스모크(읽기 전용, 프리뷰/프로덕션에 직접)
 ```
