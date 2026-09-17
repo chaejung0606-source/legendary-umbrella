@@ -82,7 +82,24 @@ function drain() {
 }
 
 // 브라우저 컨텍스트의 쿠키를 그대로 쓰는 HTTP 요청(리다이렉트는 따라가지 않는다).
-const http = (path, opts = {}) => ctx.request.get(BASE + path, { maxRedirects: 0, timeout: TIMEOUT, ...opts });
+//
+// **응답이 아예 오지 않은 경우에만** 짧게 재시도한다. 원격 배포를 상대하다 보면 프록시·회선
+// 사정으로 전송 자체가 끊기는 일이 드물게 있는데, 그러면 예외가 나면서 그 구간의 남은 검사가
+// 통째로 날아가 일시적 끊김과 실제 회귀를 구분할 수 없게 된다. 이 스위트는 배포 게이트로 쓰이므로
+// 그 차이가 중요하다. 상태 코드가 돌아온 요청(4xx·5xx 포함)은 재시도하지 않는다 —
+// 그건 서버의 답이지 전송 실패가 아니고, 재시도하면 진짜 실패를 가려버린다.
+async function http(path, opts = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await ctx.request.get(BASE + path, { maxRedirects: 0, timeout: TIMEOUT, ...opts });
+    } catch (e) {
+      lastError = e;
+      if (attempt < 3) await page.waitForTimeout(1500 * attempt);
+    }
+  }
+  throw lastError;
+}
 const bodyText = () => page.locator('body').innerText();
 
 async function open(path) {
