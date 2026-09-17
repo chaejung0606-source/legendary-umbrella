@@ -3,8 +3,14 @@
 // 배경: perms 클레임이 없는 구버전 쿠키가 남아 있으면 `/` 렌더 중
 // firstAllowedPath(undefined) → TypeError 로 "Application error" 흰 화면이 떴다.
 // 이 스위트는 그 회귀를 막는다.
+import { existsSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 import { SignJWT } from 'jose';
+
+// 서버와 **같은 AUTH_SECRET** 으로 쿠키에 서명해야 verifySession 이 통과한다.
+// .env 를 읽지 않으면 기본 시크릿으로 서명하게 되어 세션이 그냥 무효가 되고,
+// "구버전 쿠키"가 아니라 "비로그인"으로 처리돼 재로그인 안내(A3)가 뜨지 않는다.
+if (existsSync('.env')) { try { process.loadEnvFile('.env'); } catch { /* 형식이 깨진 .env 는 무시 */ } }
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3100';
 const SECRET = new TextEncoder().encode(
