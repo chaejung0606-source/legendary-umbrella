@@ -1,10 +1,14 @@
 # 작업 규칙 (사업단 자산관리 플랫폼)
 
 ## 배포 규칙 (중요)
-- 평소 모든 커밋은 **작업 브랜치 `claude/asset-management-platform-connection-5efppb`에만 푸시**한다 → Vercel **Preview** 배포로 확인.
-- **사용자가 "배포해줘"라고 명시적으로 요청할 때만** 프로덕션 브랜치
+- 모든 커밋은 먼저 **작업 브랜치 `claude/asset-management-platform-connection-5efppb`에 푸시**한다 → Vercel **Preview**.
+- **QA 가 전부 통과하면 매번 따로 확인받지 않고 바로** 프로덕션 브랜치
   `claude/asset-management-platform-pvcyfm`(Vercel Production 추적)에 fast-forward 병합 후 푸시한다.
-- 절대 자발적으로 프로덕션 브랜치에 푸시하지 않는다.
+- **QA 가 하나라도 실패하면 배포하지 않는다.** 실패 항목과 원인을 보고하고 작업 브랜치에서 멈춘다.
+  실패가 제품 결함이 아니라 테스트 하니스 문제로 밝혀진 경우에는 근거를 제시하고, 고쳐 다시 돌린 뒤 진행한다.
+- 여기서 "QA 전부"는 아래 **QA 계정 · 테스트 스위트** 절의 로컬 스위트 5종과 로컬 스모크를 말한다.
+- 다만 **되돌리기 어려운 변경은 QA 통과와 무관하게 먼저 알리고 확인을 받는다** —
+  스키마 변경 · 데이터 마이그레이션 · 환경변수 추가나 변경 · 시드 재생성처럼 운영 데이터에 영향이 가는 작업.
 
 ## 스택 / 구조
 - Next.js 15(App Router) · TypeScript · Tailwind · Prisma + PostgreSQL(Supabase, `sadan` 전용 스키마)
@@ -67,4 +71,5 @@
   E2E_BASE=<주소> E2E_ADMIN=smoke@e2e.local E2E_ADMIN_PW=… npm run e2e:smoke
   ```
   자산담당자 권한이면 설정 화면 1건이 SKIP 되어 **60/61 이 정상**이다. 관리자 권한이면 61/61.
-- 순서: 로컬 전체 통과 → 작업 브랜치 푸시 → 프리뷰 스모크 → (배포 요청 시) 프로덕션 병합 → 프로덕션 스모크.
+- 순서: 로컬 전체 통과 → 작업 브랜치 푸시 → 프리뷰 스모크 → 프로덕션 병합 → 프로덕션 스모크.
+  QA 가 실패하면 작업 브랜치에서 멈추고 배포하지 않는다.
