@@ -734,18 +734,35 @@ export async function decidePromoRequest(
   return { ok: true };
 }
 
-/** 승인된 신청을 실제 출고 처리(재고 차감 + 수불 기록 + 신청 연결) */
+/** 승인된 신청을 실제 출고 처리(재고 차감 + 수불 기록 + 신청 연결)
+ *
+ * 중복 클릭·재시도·두 관리자 동시 처리로 같은 승인 건이 두 번 출고돼 재고가 이중 차감되지
+ * 않도록, **상태 CAS(compare-and-swap)** 로 먼저 신청을 선점한다. `updateMany` 로
+ * "승인 → 출고완료" 를 원자적으로 시도하고, 실제로 1건을 바꾼 호출자만 출고 기록을 만든다.
+ * 출고 기록 생성이 실패하면 상태를 다시 '승인' 으로 되돌린다. */
 export async function completePromoRequest(id: string, managerName?: string | null): Promise<{ ok: true } | { error: string }> {
   const req = await prisma.promoRequest.findUnique({ where: { id } });
   if (!req) return { error: "신청을 찾을 수 없습니다." };
   if (req.status !== "승인") return { error: `승인된 신청만 출고 처리할 수 있습니다 (현재: ${req.status}).` };
+
+  // 선점: '승인' 인 건만 '출고완료' 로 바꾼다. 동시 호출/재시도 중 한 번만 count===1 이 된다.
+  const claim = await prisma.promoRequest.updateMany({
+    where: { id, status: "승인" },
+    data: { status: "출고완료", managerName: managerName || req.managerName, updatedAt: nowIso() },
+  });
+  if (claim.count !== 1) return { error: "이미 처리 중이거나 처리된 신청입니다. 새로고침 후 다시 확인해주세요." };
+
   const txn = await promoTxn({
     itemId: req.itemId, date: todayKst(), type: "출고", qty: req.qty,
     purpose: `[${req.outType}] ${req.purpose}`, eventName: req.eventName,
     takerName: req.requesterName, receiverName: req.requesterAffiliation, manager: managerName,
     createdBy: managerName,
   });
-  if ("error" in txn) return txn;
-  await prisma.promoRequest.update({ where: { id }, data: { status: "출고완료", txnId: txn.id, managerName: managerName || req.managerName, updatedAt: nowIso() } });
+  if ("error" in txn) {
+    // 출고 기록 실패 → 선점 롤백(다시 승인 상태로)
+    await prisma.promoRequest.update({ where: { id }, data: { status: "승인", updatedAt: nowIso() } });
+    return txn;
+  }
+  await prisma.promoRequest.update({ where: { id }, data: { txnId: txn.id } });
   return { ok: true };
 }

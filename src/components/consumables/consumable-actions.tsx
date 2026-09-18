@@ -133,9 +133,8 @@ export function ConsumableActions({ items, isManager = false }: { items: Pick<Co
               </NativeSelect>
             </Field>
             <Field label={meta?.qtyLabel ?? "수량"} required>
-              <Input name="qty" type="number" min={type === "adjust" ? 0 : 1} required placeholder="숫자" />
+              <Input name="qty" type="number" min={type === "adjust" ? 0 : 1} step={1} required placeholder="숫자" />
             </Field>
-            <Field label="사유 메모"><Input name="reason" placeholder="예: 신규 구매 / 연구실 지급 / 재물조사" /></Field>
             <DialogFooter>
               <Button type="submit" disabled={pending}>
                 {pending && <Loader2 className="h-4 w-4 animate-spin" />} {meta?.verb} 처리

@@ -48,6 +48,9 @@ node e2e/api-guard.e2e.mjs
 # 자산 등록 방어 (7 케이스) — 취득단가 음수·소수·과대값 저장 거부, 저장 메시지, 총계 불변식
 npm run e2e:asset
 
+# 홍보 출고 동시성 (4 케이스) — 같은 승인 건 동시/중복 출고완료 시 재고 1회만 차감(뮤테이션 직접 호출)
+npm run e2e:promo
+
 # 배포 스모크 (61 케이스, 읽기 전용) — 프리뷰/프로덕션 **배포 주소**에 대고 돈다.
 #   DB 에 직접 붙지 않고, 데이터를 만들지도 않는다(운영에 돌려도 안전).
 E2E_BASE=https://sadan-asset-platform.vercel.app node e2e/smoke.e2e.mjs
