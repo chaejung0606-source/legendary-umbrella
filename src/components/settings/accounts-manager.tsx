@@ -54,7 +54,7 @@ export function AccountsManager({ accounts }: { accounts: Account[] }) {
         ? await updateAccountAction(editing.account.id, input)
         : await createAccountAction(input);
       if (result.ok) {
-        toast({ kind: "success", title: editing.mode === "edit" ? "계정 수정 완료" : "계정 생성 완료", description: "데모 데이터에 반영되었습니다. (서버 재시작 시 초기화)" });
+        toast({ kind: "success", title: editing.mode === "edit" ? "계정 수정 완료" : "계정 생성 완료", description: "변경 사항이 저장되었습니다." });
         setEditing(null);
         router.refresh();
       } else {

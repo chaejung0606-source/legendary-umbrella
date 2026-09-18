@@ -45,6 +45,9 @@ node e2e/password-hashing.e2e.mjs
 #                              화면 날짜 기본값이 실제 오늘(KST)인지
 node e2e/api-guard.e2e.mjs
 
+# 자산 등록 방어 (7 케이스) — 취득단가 음수·소수·과대값 저장 거부, 저장 메시지, 총계 불변식
+npm run e2e:asset
+
 # 배포 스모크 (61 케이스, 읽기 전용) — 프리뷰/프로덕션 **배포 주소**에 대고 돈다.
 #   DB 에 직접 붙지 않고, 데이터를 만들지도 않는다(운영에 돌려도 안전).
 E2E_BASE=https://sadan-asset-platform.vercel.app node e2e/smoke.e2e.mjs

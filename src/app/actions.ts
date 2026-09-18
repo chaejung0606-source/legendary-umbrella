@@ -14,6 +14,7 @@ import {
   type PromoItemInput, type PromoTxnInput, type PromoRequestInput,
 } from "@/data/mutations";
 import { getLaptopLoans, getCategories, getBuildings } from "@/data";
+import { todayKst } from "@/lib/date";
 import { TAG_STATUSES, type TagStatus } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { verifySession, SESSION_COOKIE, type SessionPayload } from "@/lib/session";
@@ -45,12 +46,25 @@ function refreshAll() {
   revalidatePath("/", "layout");
 }
 
+// 금액·번호 방어: 음수/소수는 취득액 합계를 깨뜨리거나 Prisma Int 저장에서 예외를 낸다.
+function validateAssetNumbers(input: AssetInput): string | null {
+  if (!Number.isFinite(input.unitPrice) || !Number.isInteger(input.unitPrice) || input.unitPrice < 0)
+    return "취득단가는 0 이상의 정수(원)여야 합니다.";
+  if (input.unitPrice > 1_000_000_000_000)
+    return "취득단가가 너무 큽니다. 값을 다시 확인해주세요.";
+  if (input.sequenceNo !== null && (!Number.isInteger(input.sequenceNo) || input.sequenceNo < 1))
+    return "번호는 1 이상의 정수여야 합니다.";
+  return null;
+}
+
 export async function createAssetAction(
   input: AssetInput
 ): Promise<ActionResult<{ id: string; managementNo: string | null }>> {
   const auth = await requireManager();
   if ("error" in auth) return { ok: false, error: auth.error };
   if (!input.itemName?.trim()) return { ok: false, error: "품명은 필수입니다." };
+  const numErr = validateAssetNumbers(input);
+  if (numErr) return { ok: false, error: numErr };
   const asset = await createAsset(input);
   refreshAll();
   return { ok: true, id: asset.id, managementNo: asset.lockedManagementNo };
@@ -62,6 +76,9 @@ export async function updateAssetAction(
 ): Promise<ActionResult<{ id: string; managementNo: string | null }>> {
   const auth = await requireManager();
   if ("error" in auth) return { ok: false, error: auth.error };
+  if (!input.itemName?.trim()) return { ok: false, error: "품명은 필수입니다." };
+  const numErr = validateAssetNumbers(input);
+  if (numErr) return { ok: false, error: numErr };
   const asset = await updateAsset(id, input);
   if (!asset) return { ok: false, error: "자산을 찾을 수 없습니다." };
   refreshAll();
@@ -186,6 +203,7 @@ export async function loanAssetAction(assetId: string, input: LoanInput): Promis
   if ("error" in auth) return { ok: false, error: auth.error };
   if (!input.userName?.trim()) return { ok: false, error: "대여자 이름을 입력해주세요." };
   if (!input.dueAt) return { ok: false, error: "반납 예정일을 입력해주세요." };
+  if (input.dueAt < (input.loanedAt || todayKst())) return { ok: false, error: "반납 예정일은 대여일자보다 빠를 수 없습니다." };
   const loan = await loanAsset(assetId, { ...input, userName: input.userName.trim() });
   if (!loan) return { ok: false, error: "자산을 찾을 수 없습니다." };
   refreshAll();
@@ -199,6 +217,7 @@ export async function loanAssetsAction(assetIds: string[], input: LoanInput): Pr
   if (!assetIds?.length) return { ok: false, error: "대여할 자산을 선택해주세요." };
   if (!input.userName?.trim()) return { ok: false, error: "대여자 이름을 입력해주세요." };
   if (!input.dueAt) return { ok: false, error: "반납 예정일을 입력해주세요." };
+  if (input.dueAt < (input.loanedAt || todayKst())) return { ok: false, error: "반납 예정일은 대여일자보다 빠를 수 없습니다." };
   if (!input.signature) return { ok: false, error: "대여자 서명을 해주세요." };
   const failed: string[] = [];
   let count = 0;

@@ -93,7 +93,7 @@ export function AssetForm({
         </div>
         <h3 className="text-lg font-bold">{mode === "edit" ? "수정 완료" : "자산 등록 완료"}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          데모 데이터에 반영되어 자산 원장·대시보드에서 바로 확인할 수 있습니다. (DB 미연동 — 서버 재시작 시 초기화)
+          저장되었습니다. 자산 원장·대시보드에서 바로 확인할 수 있습니다.
         </p>
         <p className="mt-3 inline-block rounded-2xl bg-muted px-4 py-2 font-mono text-sm">{saved.managementNo}</p>
         <div className="mt-6 flex justify-center gap-2">
@@ -134,8 +134,8 @@ export function AssetForm({
 
       <FormSection title="취득 정보">
         <Field label="취득날짜" required><Input type="date" required value={acquiredDate} onChange={(e) => setAcquiredDate(e.target.value)} /></Field>
-        <Field label="취득단가"><Input type="number" name="unitPrice" defaultValue={defaults?.unitPrice ?? ""} placeholder="원" /></Field>
-        <Field label="번호"><Input type="number" value={seq} onChange={(e) => setSeq(e.target.value)} /></Field>
+        <Field label="취득단가"><Input type="number" name="unitPrice" min={0} step={1} defaultValue={defaults?.unitPrice ?? ""} placeholder="원" /></Field>
+        <Field label="번호"><Input type="number" min={1} step={1} value={seq} onChange={(e) => setSeq(e.target.value)} /></Field>
       </FormSection>
 
       <FormSection title="위치 정보" description="건축물 선택 시 건축물코드가 자동 입력됩니다.">
