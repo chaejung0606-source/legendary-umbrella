@@ -531,6 +531,9 @@ export interface PromoItemInput {
   unitPrice?: number; safetyQty?: number; docNo?: string | null; note?: string | null;
 }
 
+// 단가·안전재고 방어: 음수·소수·NaN 을 0 이상의 정수로 정규화한다(재고 금액·알림 계산 보호).
+const nonNegInt = (v: number | undefined | null): number => Math.max(0, Math.round(Number(v ?? 0) || 0));
+
 export async function createPromoItem(input: PromoItemInput): Promise<PromoItem | { error: string }> {
   if (!input.code.trim()) return { error: "구분코드를 입력해주세요." };
   if (!input.name.trim()) return { error: "물품명을 입력해주세요." };
@@ -541,7 +544,7 @@ export async function createPromoItem(input: PromoItemInput): Promise<PromoItem 
       id: uid(), code: input.code.trim(), name: input.name.trim(),
       category: input.category || null, spec: input.spec || null, unit: input.unit || "개",
       location: input.location || null, manager: input.manager || null, vendor: input.vendor || null,
-      purchasedAt: input.purchasedAt || null, unitPrice: input.unitPrice ?? 0, safetyQty: input.safetyQty ?? 0,
+      purchasedAt: input.purchasedAt || null, unitPrice: nonNegInt(input.unitPrice), safetyQty: nonNegInt(input.safetyQty),
       docNo: input.docNo || null, note: input.note || null, totalAmount: 0, status: "사용", createdAt: ts, updatedAt: ts,
     },
   }) as unknown as PromoItem;
@@ -557,7 +560,7 @@ export async function updatePromoItem(id: string, input: PromoItemInput): Promis
       code: input.code.trim(), name: input.name.trim(),
       category: input.category || null, spec: input.spec || null, unit: input.unit || "개",
       location: input.location || null, manager: input.manager || null, vendor: input.vendor || null,
-      purchasedAt: input.purchasedAt || null, unitPrice: input.unitPrice ?? 0, safetyQty: input.safetyQty ?? 0,
+      purchasedAt: input.purchasedAt || null, unitPrice: nonNegInt(input.unitPrice), safetyQty: nonNegInt(input.safetyQty),
       docNo: input.docNo || null, note: input.note || null, updatedAt: nowIso(),
     },
   }) as unknown as PromoItem;
@@ -709,29 +712,38 @@ export async function decidePromoRequest(
   // 지정 시 해당 이름의 신청만 취소 허용(비관리자 본인 확인용). undefined면 소유자 검증 생략(관리자).
   ownerName?: string | null
 ): Promise<{ ok: true } | { error: string }> {
-  const req = await prisma.promoRequest.findUnique({ where: { id } });
-  if (!req) return { error: "신청을 찾을 수 없습니다." };
-  if (ownerName !== undefined && ownerName !== null && req.requesterName !== ownerName) {
-    return { error: "본인이 신청한 건만 취소할 수 있습니다." };
-  }
-  if (decision === "승인") {
-    if (req.status !== "신청") return { error: `'신청' 상태에서만 승인할 수 있습니다 (현재: ${req.status}).` };
-    // 승인 = 사용 가능 수량 예약. 가용 수량 확인
-    const [balanceRows, approved] = await Promise.all([
-      prisma.promoTxn.findMany({ where: { itemId: req.itemId }, select: { qty: true, direction: true } }),
-      prisma.promoRequest.aggregate({ _sum: { qty: true }, where: { itemId: req.itemId, status: "승인" } }),
-    ]);
-    const balance = balanceRows.reduce((s, r) => s + r.direction * r.qty, 0);
-    const available = balance - (approved._sum.qty ?? 0);
-    if (req.qty > available) return { error: `사용 가능 수량(${available})을 초과합니다. (재고 ${balance}, 출고 예정 ${approved._sum.qty ?? 0})` };
-  }
   if (decision === "반려" && !rejectReason?.trim()) return { error: "반려 사유를 입력해주세요." };
-  if (decision === "취소" && !["신청", "승인"].includes(req.status)) return { error: "신청/승인 상태에서만 취소할 수 있습니다." };
-  await prisma.promoRequest.update({
-    where: { id },
-    data: { status: decision, managerName: managerName || req.managerName, rejectReason: rejectReason?.trim() || null, updatedAt: nowIso() },
-  });
-  return { ok: true };
+  // 승인 가용 수량 확인과 상태 변경을 한 Serializable 트랜잭션으로 묶는다.
+  // 두 관리자가 같은 물품의 서로 다른 신청을 동시에 승인하면, 각자 옛 예약합을 보고 통과해
+  // 예약 합계가 재고를 넘길 수 있다(초과 예약). 직렬화로 한 건만 성공하게 한다.
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const req = await tx.promoRequest.findUnique({ where: { id } });
+      if (!req) throw new Error("신청을 찾을 수 없습니다.");
+      if (ownerName !== undefined && ownerName !== null && req.requesterName !== ownerName) {
+        throw new Error("본인이 신청한 건만 취소할 수 있습니다.");
+      }
+      if (decision === "승인") {
+        if (req.status !== "신청") throw new Error(`'신청' 상태에서만 승인할 수 있습니다 (현재: ${req.status}).`);
+        const rows = await tx.promoTxn.findMany({ where: { itemId: req.itemId }, select: { qty: true, direction: true } });
+        const approved = await tx.promoRequest.aggregate({ _sum: { qty: true }, where: { itemId: req.itemId, status: "승인" } });
+        const balance = rows.reduce((s, r) => s + r.direction * r.qty, 0);
+        const available = balance - (approved._sum.qty ?? 0);
+        if (req.qty > available) throw new Error(`사용 가능 수량(${available})을 초과합니다. (재고 ${balance}, 출고 예정 ${approved._sum.qty ?? 0})`);
+      } else if (decision === "취소") {
+        if (!["신청", "승인"].includes(req.status)) throw new Error("신청/승인 상태에서만 취소할 수 있습니다.");
+      }
+      await tx.promoRequest.update({
+        where: { id },
+        data: { status: decision, managerName: managerName || req.managerName, rejectReason: rejectReason?.trim() || null, updatedAt: nowIso() },
+      });
+      return { ok: true } as const;
+    }, { isolationLevel: "Serializable" });
+  } catch (e) {
+    // Serializable 충돌(동시 승인) 포함 — 사용자가 다시 시도하면 갱신된 가용 수량으로 재검증된다.
+    const msg = e instanceof Error ? e.message : "처리 중 오류가 발생했습니다.";
+    return { error: /could not serialize|deadlock|write conflict|serialization/i.test(msg) ? "다른 처리와 겹쳐 반영되지 않았습니다. 새로고침 후 다시 시도해주세요." : msg };
+  }
 }
 
 /** 승인된 신청을 실제 출고 처리(재고 차감 + 수불 기록 + 신청 연결)
