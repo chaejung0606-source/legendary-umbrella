@@ -50,8 +50,8 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <StatCard label="전체 자산 수" value={formatNumber(stats.totalAssets)} sub="건" icon={Boxes} tone="lavender" />
         <StatCard label="전체 취득금액" value={formatCurrencyShort(stats.totalAcquisition)} sub={formatCurrency(stats.totalAcquisition)} icon={Coins} tone="purple" />
-        <StatCard label="RFID 미등록" value={formatNumber(stats.rfidUnregistered)} sub={`등록률 ${Math.round((1 - stats.rfidUnregistered / stats.totalAssets) * 100)}%`} icon={ScanLine} tone="coral" />
-        <StatCard label="노트북 사용/대여 중" value={formatNumber(stats.laptopsOut)} sub="45대 중" icon={Laptop} tone="sky" />
+        <StatCard label="RFID 미등록" value={formatNumber(stats.rfidUnregistered)} sub={`등록률 ${stats.totalAssets ? Math.round((1 - stats.rfidUnregistered / stats.totalAssets) * 100) : 0}%`} icon={ScanLine} tone="coral" />
+        <StatCard label="노트북 사용/대여 중" value={formatNumber(stats.laptopsOut)} sub={`${formatNumber(stats.laptopsTotal)}대 중`} icon={Laptop} tone="sky" />
         <StatCard label="점검 필요 자산" value={formatNumber(stats.needsInspection)} sub="점검·수리" icon={Wrench} tone="cream" />
         <StatCard label="이번 달 신규" value={formatNumber(stats.newThisMonth)} sub={`${thisMonthKst()} 기준`} icon={Sparkles} tone="mint" />
       </div>

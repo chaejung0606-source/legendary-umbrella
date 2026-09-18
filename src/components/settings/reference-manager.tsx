@@ -27,6 +27,7 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
   const router = useRouter();
   const { toast } = useToast();
   const [dlg, setDlg] = useState<Dlg>(null);
+  const [confirm, setConfirm] = useState<{ label: string; run: () => Promise<{ ok: boolean; error?: string }>; successTitle: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<"category" | "building">("category");
   const [q, setQ] = useState("");
@@ -62,6 +63,7 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
       if (result.ok) {
         toast({ kind: "success", title: successTitle, description: "기준정보가 반영되어 이후 자산 등록의 관리번호 생성에 즉시 적용됩니다." });
         setDlg(null);
+        setConfirm(null);
         router.refresh();
       } else {
         toast({ kind: "error", title: "처리 실패", description: result.error });
@@ -116,7 +118,7 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
                 <div className="flex gap-1">
                   <Button size="sm" variant="ghost" onClick={() => setDlg({ t: "middle-add", majorId: maj.id, majorName: maj.name })}><Plus className="h-3.5 w-3.5" /> 중분류</Button>
                   <Button size="sm" variant="ghost" onClick={() => setDlg({ t: "major-edit", id: maj.id, code: maj.code, name: maj.name })}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => run(() => deleteMajorAction(maj.id), "대분류 삭제 완료")}><Trash2 className="h-3.5 w-3.5 text-pastel-coralInk" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirm({ label: `대분류 "${maj.name}"${maj.middles.length ? ` 및 하위 중분류 ${maj.middles.length}개` : ""}`, run: () => deleteMajorAction(maj.id), successTitle: "대분류 삭제 완료" })}><Trash2 className="h-3.5 w-3.5 text-pastel-coralInk" /></Button>
                 </div>
               </div>
               <div className="space-y-1">
@@ -134,7 +136,7 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <button onClick={() => setDlg({ t: "middle-edit", id: mid.id, code: mid.code, name: mid.name, detail: (mid.detailItems ?? []).join(", ") })} className="opacity-40 transition hover:opacity-100" aria-label="중분류 수정"><Pencil className="h-3 w-3" /></button>
-                      <button onClick={() => run(() => deleteMiddleAction(mid.id), "중분류 삭제 완료")} className="opacity-40 transition hover:opacity-100" aria-label="중분류 삭제"><Trash2 className="h-3 w-3 text-pastel-coralInk" /></button>
+                      <button onClick={() => setConfirm({ label: `중분류 "${mid.name}" (코드 ${mid.code})`, run: () => deleteMiddleAction(mid.id), successTitle: "중분류 삭제 완료" })} className="opacity-40 transition hover:opacity-100" aria-label="중분류 삭제"><Trash2 className="h-3 w-3 text-pastel-coralInk" /></button>
                     </div>
                   </div>
                 ))}
@@ -167,7 +169,7 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
                     <td className="px-4 py-2.5">
                       <div className="flex justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => setDlg({ t: "building-edit", id: b.id, code: b.code, name: b.name, campus: b.campus })}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => run(() => deleteBuildingAction(b.id), "건축물 삭제 완료")}><Trash2 className="h-3.5 w-3.5 text-pastel-coralInk" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => setConfirm({ label: `건축물 "${b.name}" (코드 ${b.code})`, run: () => deleteBuildingAction(b.id), successTitle: "건축물 삭제 완료" })}><Trash2 className="h-3.5 w-3.5 text-pastel-coralInk" /></Button>
                       </div>
                     </td>
                   </tr>
@@ -221,6 +223,22 @@ export function ReferenceManager({ categories, buildings }: { categories: AssetM
               <Field label="캠퍼스"><Input name="campus" defaultValue={dlg.campus} /></Field>
             </FormDialog>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 삭제 확인 — 기준정보는 관리번호 생성에 쓰이므로 실수 삭제를 막는다 */}
+      <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>삭제 확인</DialogTitle>
+            <DialogDescription>{confirm?.label}을(를) 삭제할까요? 되돌릴 수 없습니다. (사용 중인 자산이 있으면 삭제되지 않습니다.)</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>취소</Button>
+            <Button variant="destructive" disabled={pending} onClick={() => { if (confirm) run(confirm.run, confirm.successTitle); }}>
+              {pending && <Loader2 className="h-4 w-4 animate-spin" />} 삭제
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -293,6 +293,7 @@ export interface DashboardStats {
   totalAcquisition: number;
   rfidUnregistered: number;
   laptopsOut: number;
+  laptopsTotal: number;
   needsInspection: number;
   newThisMonth: number;
 }

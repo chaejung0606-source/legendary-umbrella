@@ -92,11 +92,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const d = await loadData();
   const assets = live(d.assets);
   const month = thisMonthKst();
+  // "노트북" 지표는 노트북으로 지정된 대여기록만 센다(일반 자산 대여는 제외 — 노트북 대여현황 화면과 일치).
+  const notebooks = d.laptopLoans.filter((l) => l.isNotebook);
   return {
     totalAssets: assets.length,
     totalAcquisition: assets.reduce((s, a) => s + a.unitPrice, 0),
     rfidUnregistered: assets.filter((a) => !a.schoolRfidNo).length,
-    laptopsOut: d.laptopLoans.filter((l) => l.status === "직원사용" || l.status === "대여중").length,
+    laptopsOut: notebooks.filter((l) => l.status === "직원사용" || l.status === "대여중").length,
+    laptopsTotal: notebooks.length,
     needsInspection: assets.filter((a) => a.assetStatus === "점검필요" || a.assetStatus === "수리중").length,
     newThisMonth: assets.filter((a) => (a.acquiredDate ?? "").startsWith(month)).length,
   };
