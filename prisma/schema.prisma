@@ -141,6 +141,25 @@ model ConsumableItem {
   @@schema("sadan")
 }
 
+// ─── 소모품 입출고/조정 이력 (수불 원장) ───
+// 소모품 재고 변동을 감사 가능하게 남긴다. 재고 수량 자체는 ConsumableItem.currentQty 로 유지하고,
+// 이 표는 "누가·언제·왜·얼마"의 이력만 기록한다(홍보물품 PromoTxn 과 같은 취지).
+model ConsumableTxn {
+  id           String  @id
+  itemId       String
+  date         String // 처리일자 (YYYY-MM-DD, KST)
+  type         String // 입고 | 출고 | 조정
+  qty          Int // 변동 수량 (조정은 증감 절대값, 항상 0 이상)
+  direction    Int // +1 입고성 / -1 출고성 / 0 변동 없음(조정 확인)
+  balanceAfter Int // 변동 후 재고
+  reason       String? // 사유 메모
+  createdBy    String? // 기록자
+  createdAt    String
+
+  @@index([itemId])
+  @@schema("sadan")
+}
+
 // ─── 좌석 / 배치 ───
 model Seat {
   id           String  @id

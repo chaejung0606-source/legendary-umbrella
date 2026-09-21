@@ -131,6 +131,20 @@ export interface ConsumableItem {
   lastOutboundAt?: string | null;
   status: ConsumableStatus;
 }
+
+// 소모품 입출고/조정 이력 한 건
+export interface ConsumableTxn {
+  id: string;
+  itemId: string;
+  date: string; // YYYY-MM-DD (KST)
+  type: "입고" | "출고" | "조정";
+  qty: number; // 변동 수량 (조정은 증감 절대값)
+  direction: number; // +1 입고 / -1 출고 / 0 변동 없음
+  balanceAfter: number;
+  reason?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+}
 export interface ConsumableMovement {
   id: string;
   itemId: string;

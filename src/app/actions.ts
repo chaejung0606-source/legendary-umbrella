@@ -299,7 +299,8 @@ export async function createConsumableItemAction(input: ConsumableItemInput): Pr
 export async function consumableTxnAction(
   itemId: string,
   type: "in" | "out" | "adjust",
-  qty: number
+  qty: number,
+  reason?: string | null
 ): Promise<ActionResult> {
   // 재고 조정(adjust)은 관리자만, 입/출고는 로그인 사용자 허용
   const auth = type === "adjust" ? await requireManager() : await requireLogin();
@@ -307,7 +308,7 @@ export async function consumableTxnAction(
   if (!Number.isFinite(qty) || qty < 0 || (type !== "adjust" && qty === 0)) {
     return { ok: false, error: "수량을 올바르게 입력해주세요." };
   }
-  const result = await consumableTxn(itemId, type, Math.round(qty));
+  const result = await consumableTxn(itemId, type, Math.round(qty), reason ?? null, auth.session.name);
   if ("error" in result) return { ok: false, error: result.error };
   refreshAll();
   return { ok: true };

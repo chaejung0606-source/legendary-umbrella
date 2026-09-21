@@ -56,9 +56,10 @@ export function ConsumableActions({ items, isManager = false }: { items: Pick<Co
     if (!type) return;
     const itemId = String(fd.get("itemId") ?? "");
     const qty = Number(fd.get("qty") ?? 0);
+    const reason = String(fd.get("reason") ?? "").trim() || null;
     const item = items.find((i) => i.id === itemId);
     startTransition(async () => {
-      const result = await consumableTxnAction(itemId, type, qty);
+      const result = await consumableTxnAction(itemId, type, qty, reason);
       if (result.ok) {
         toast({
           kind: "success",
@@ -135,6 +136,7 @@ export function ConsumableActions({ items, isManager = false }: { items: Pick<Co
             <Field label={meta?.qtyLabel ?? "수량"} required>
               <Input name="qty" type="number" min={type === "adjust" ? 0 : 1} step={1} required placeholder="숫자" />
             </Field>
+            <Field label="사유 메모" hint="입출고 이력에 기록됩니다"><Input name="reason" placeholder="예: 신규 구매 / 연구실 지급 / 재물조사" /></Field>
             <DialogFooter>
               <Button type="submit" disabled={pending}>
                 {pending && <Loader2 className="h-4 w-4 animate-spin" />} {meta?.verb} 처리

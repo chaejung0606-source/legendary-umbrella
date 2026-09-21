@@ -297,9 +297,9 @@ export async function createConsumableItem(input: ConsumableItemInput): Promise<
 }
 
 export async function consumableTxn(
-  itemId: string, type: "in" | "out" | "adjust", qty: number,
+  itemId: string, type: "in" | "out" | "adjust", qty: number, reason?: string | null, by?: string | null,
 ): Promise<{ item: ConsumableItem } | { error: string }> {
-  // 재고 조회 → 검증 → 갱신을 한 트랜잭션(Serializable)으로 묶는다.
+  // 재고 조회 → 검증 → 갱신 + 이력 기록을 한 트랜잭션(Serializable)으로 묶는다.
   // 두 사람이 동시에 출고하면 각자 옛 재고를 보고 검증을 통과해 재고가 음수가 될 수 있다.
   // 홍보물품 수불(promoTxn)과 같은 격리 수준을 쓴다.
   try {
@@ -308,14 +308,28 @@ export async function consumableTxn(
       if (!item) throw new Error("품목을 찾을 수 없습니다.");
       let currentQty = item.currentQty;
       const data: { currentQty: number; status: string; lastInboundAt?: string; lastOutboundAt?: string } = { currentQty, status: item.status };
-      if (type === "in") { currentQty += qty; data.lastInboundAt = todayKst(); }
+      // 이력 기록용: 변동 수량(절대값)·방향·유형
+      let histQty = qty, direction = 0, histType: "입고" | "출고" | "조정" = "조정";
+      if (type === "in") { currentQty += qty; data.lastInboundAt = todayKst(); histType = "입고"; direction = 1; }
       else if (type === "out") {
         if (qty > currentQty) throw new Error(`현재 재고(${currentQty}${item.unit})보다 많은 수량은 출고할 수 없습니다.`);
-        currentQty -= qty; data.lastOutboundAt = todayKst();
-      } else currentQty = qty;
+        currentQty -= qty; data.lastOutboundAt = todayKst(); histType = "출고"; direction = -1;
+      } else {
+        // 조정: qty 는 조정 후 목표 재고. 이력엔 증감(delta)을 남긴다.
+        const delta = qty - currentQty;
+        histQty = Math.abs(delta); direction = delta > 0 ? 1 : delta < 0 ? -1 : 0; histType = "조정";
+        currentQty = qty;
+      }
       data.currentQty = currentQty;
       data.status = consumableStatus(currentQty, item.safetyQty);
-      return tx.consumableItem.update({ where: { id: itemId }, data });
+      const result = await tx.consumableItem.update({ where: { id: itemId }, data });
+      await tx.consumableTxn.create({
+        data: {
+          id: uid(), itemId, date: todayKst(), type: histType, qty: histQty, direction,
+          balanceAfter: currentQty, reason: reason?.trim() || null, createdBy: by || null, createdAt: nowIso(),
+        },
+      });
+      return result;
     }, { isolationLevel: "Serializable" });
     return { item: updated as unknown as ConsumableItem };
   } catch (e) {

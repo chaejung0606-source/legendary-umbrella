@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ConsumableItem } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { ConsumableStatusBadge } from "@/components/badges/status-badge";
@@ -26,7 +27,7 @@ export function ConsumableTable({ items }: { items: ConsumableItem[] }) {
               return (
                 <tr key={c.id} className="border-b border-black/[0.04] transition-colors last:border-0 hover:bg-accent/60">
                   <td className="px-4 py-3.5">
-                    <div className="font-semibold">{c.itemName}</div>
+                    <Link href={`/consumables/${c.id}`} className="font-semibold hover:text-brand-700 hover:underline">{c.itemName}</Link>
                     <div className="text-xs text-muted-foreground">{c.specification}</div>
                   </td>
                   <td className="px-4 py-3.5 text-center">

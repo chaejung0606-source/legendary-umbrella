@@ -18,7 +18,8 @@
     "verify:import": "tsx scripts/verify-import.ts",
     "e2e:smoke": "node e2e/smoke.e2e.mjs",
     "e2e:asset": "node e2e/asset-validation.e2e.mjs",
-    "e2e:promo": "tsx e2e/promo-concurrency.e2e.mts"
+    "e2e:promo": "tsx e2e/promo-concurrency.e2e.mts",
+    "e2e:consumable": "tsx e2e/consumable-history.e2e.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

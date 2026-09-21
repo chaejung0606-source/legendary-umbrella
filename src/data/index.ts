@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type {
-  Asset, DashboardStats, MonthlyAcquisitionPoint, CategoryRatioPoint, LaptopLoan, ConsumableItem, Seat, SeatAsset,
+  Asset, DashboardStats, MonthlyAcquisitionPoint, CategoryRatioPoint, LaptopLoan, ConsumableItem, ConsumableTxn, Seat, SeatAsset,
   Account, AssetMajorCategory, Building, PromoItem, PromoTxn, PromoRequest, PromoItemWithStock,
 } from "@/types";
 import { prisma } from "@/lib/prisma";
@@ -178,6 +178,17 @@ export async function isAssetOnLoan(asset: Asset): Promise<boolean> {
 // ─── 소모품 ───
 export async function getConsumables(): Promise<ConsumableItem[]> {
   return (await loadData()).consumables;
+}
+export async function getConsumableItemById(id: string): Promise<ConsumableItem | undefined> {
+  return (await loadData()).consumables.find((c) => c.id === id);
+}
+// 소모품 입출고/조정 이력 — 최신순. itemId 지정 시 해당 품목만.
+export async function getConsumableTxns(itemId?: string): Promise<ConsumableTxn[]> {
+  const rows = await prisma.consumableTxn.findMany({
+    where: itemId ? { itemId } : undefined,
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+  });
+  return rows as unknown as ConsumableTxn[];
 }
 export async function getConsumableStats() {
   const items = (await loadData()).consumables;
