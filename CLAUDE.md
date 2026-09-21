@@ -6,7 +6,7 @@
   `claude/asset-management-platform-pvcyfm`(Vercel Production 추적)에 fast-forward 병합 후 푸시한다.
 - **QA 가 하나라도 실패하면 배포하지 않는다.** 실패 항목과 원인을 보고하고 작업 브랜치에서 멈춘다.
   실패가 제품 결함이 아니라 테스트 하니스 문제로 밝혀진 경우에는 근거를 제시하고, 고쳐 다시 돌린 뒤 진행한다.
-- 여기서 "QA 전부"는 아래 **QA 계정 · 테스트 스위트** 절의 로컬 스위트 5종과 로컬 스모크를 말한다.
+- 여기서 "QA 전부"는 아래 **QA 계정 · 테스트 스위트** 절의 로컬 스위트 8종과 로컬 스모크를 말한다.
 - 다만 **되돌리기 어려운 변경은 QA 통과와 무관하게 먼저 알리고 확인을 받는다** —
   스키마 변경 · 데이터 마이그레이션 · 환경변수 추가나 변경 · 시드 재생성처럼 운영 데이터에 영향이 가는 작업.
 
@@ -65,6 +65,9 @@
 | `session-recovery` | 13 | `.env` 의 `AUTH_SECRET` 을 스크립트가 직접 읽는다 |
 | `password-hashing` | 13 | 앱과 같은 `DATABASE_URL` |
 | `api-guard` | 32 | 앱과 같은 `DATABASE_URL` |
+| `asset-validation` | 7 | 앱과 같은 `DATABASE_URL` (`npm run e2e:asset`) — 취득단가 음수·소수·과대값 방어 |
+| `promo-concurrency` | 5 | 앱과 같은 `DATABASE_URL` (`npm run e2e:promo`, tsx) — 홍보 출고완료·승인 동시성 |
+| `consumable-history` | 6 | 앱과 같은 `DATABASE_URL` (`npm run e2e:consumable`, tsx) — 소모품 입출고 이력 |
 
 - **배포된 주소(프리뷰·프로덕션)에는 읽기 전용 스모크만** 돌린다. 데이터를 만들지 않으므로 운영에 안전하다.
   ```bash
