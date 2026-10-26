@@ -25,6 +25,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.4.0",
+    date: "2026.10.26.",
+    title: "자산 원장에서 구글시트 바로 열기",
+    items: [
+      { tag: "신규", text: "자산 원장 상단 '자산 등록' 옆에 구글시트 버튼 추가 — 설정 > 구글시트 연동의 '자산 현황 시트 URL'을 새 탭으로 엽니다" },
+      { tag: "개선", text: "시트 주소가 등록되지 않았으면 관리자에게 '구글시트 연결' 버튼으로 설정 화면(구글시트 연동 탭)을 바로 엽니다" },
+    ],
+  },
+  {
     version: "3.3.1",
     date: "2026.09.08.",
     title: "날짜가 과거에 멈춰 있던 문제 수정 · 자료 내려받기 권한 강화",

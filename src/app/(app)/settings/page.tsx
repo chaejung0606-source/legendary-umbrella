@@ -7,7 +7,12 @@ import { SettingsWorkspace } from "@/components/settings/settings-workspace";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+const TABS = ["accounts", "reference", "sheets", "rfid"] as const;
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const { tab } = await searchParams;
+  // 자산 원장의 '구글시트 연결' 버튼처럼 /settings?tab=sheets 로 들어오면 해당 탭을 바로 연다
+  const initialTab = TABS.find((t) => t === tab) ?? "accounts";
   const [accountsRaw, categories, buildings, appSettings] = await Promise.all([
     getAccounts(), getCategories(), getBuildings(), getAppSettings(),
   ]);
@@ -26,6 +31,7 @@ export default async function SettingsPage() {
         appSettings={appSettings}
         sheetsAccessKey={process.env.SHEETS_ACCESS_KEY ?? ""}
         canEditSettings={canEditSettings}
+        initialTab={initialTab}
       />
     </div>
   );

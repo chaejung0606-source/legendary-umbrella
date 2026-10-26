@@ -23,6 +23,7 @@ export function SettingsWorkspace({
   appSettings,
   sheetsAccessKey,
   canEditSettings,
+  initialTab = "accounts",
 }: {
   accounts: Account[];
   categories: AssetMajorCategory[];
@@ -30,8 +31,9 @@ export function SettingsWorkspace({
   appSettings: Record<string, string>;
   sheetsAccessKey: string;
   canEditSettings: boolean;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("accounts");
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
     <div className="space-y-5">
